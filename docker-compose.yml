@@ -1,0 +1,74 @@
+name: talkative
+
+services:
+  migrate-data:
+    image: alpine:3.22
+    command:
+      - sh
+      - -c
+      - |
+        set -eu
+        if [ -z "$(ls -A /data/chat)" ]; then
+          cp -a /legacy/chat/. /data/chat/
+        fi
+        if [ -z "$(ls -A /data/redis)" ]; then
+          cp -a /legacy/redis/. /data/redis/
+        fi
+    volumes:
+      - chat-data:/data/chat
+      - redis-data:/data/redis
+      - legacy-chat-data:/legacy/chat:ro
+      - legacy-redis-data:/legacy/redis:ro
+    restart: "no"
+  talkative:
+    image: talkative:latest
+    container_name: talkative
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET in .env}
+      USER_DATABASE_PATH: /data/users.db
+      ADMIN_DATABASE_PATH: /data/admin.db
+      DATABASE_PATH: /data/talkative.db
+      REDIS_URL: redis://redis:6379/0
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in .env}
+      ADMIN_TRANSCRIPT_KEY: ${ADMIN_TRANSCRIPT_KEY:-}
+      COMPANY_COST_PER_DAY: ${COMPANY_COST_PER_DAY:-0}
+      COMPANY_COST_CURRENCY: ${COMPANY_COST_CURRENCY:-INR}
+      ACTIVITY_LOG_RETENTION_DAYS: ${ACTIVITY_LOG_RETENTION_DAYS:-30}
+    volumes:
+      - chat-data:/data
+    depends_on:
+      migrate-data:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+  redis:
+    container_name: talkative-redis
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes", "--save", "60", "1000", "--requirepass", "${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    depends_on:
+      migrate-data:
+        condition: service_completed_successfully
+volumes:
+  chat-data:
+    name: talkative_chat-data
+  redis-data:
+    name: talkative_redis-data
+  legacy-chat-data:
+    name: stranger-chat-ubuntu26_chat-data
+  legacy-redis-data:
+    name: stranger-chat-ubuntu26_redis-data

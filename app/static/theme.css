@@ -1,0 +1,69 @@
+.theme-button{display:grid;place-items:center;flex:0 0 38px;width:38px;height:38px;padding:0;margin:0;border:1px solid #d5dfdc;border-radius:50%;background:#fff;color:#126b61;cursor:pointer;transition:background-color .15s,border-color .15s,color .15s}
+.theme-button:hover{background:#e8f0ed}
+.theme-button svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.theme-moon{display:none}
+html[data-theme="dark"]{color-scheme:dark;background:#000;color:#e6e6e6}
+html[data-theme="dark"] body{background:#000;color:#e6e6e6}
+html[data-theme="dark"] .brand{border-color:#303030}
+html[data-theme="dark"] .brand a,html[data-theme="dark"] #profileStatus{color:#d0d0d0}
+html[data-theme="dark"] .brand span{background:#292929;color:#ddd}
+html[data-theme="dark"] .card,html[data-theme="dark"] .account-panel{background:#111;border-color:#333;color:#e6e6e6;box-shadow:0 8px 30px #000}
+html[data-theme="dark"] input,html[data-theme="dark"] select{background:#090909;border-color:#444;color:#eee}
+html[data-theme="dark"] input::placeholder{color:#888}
+html[data-theme="dark"] button{background:#303030;color:#eee}
+html[data-theme="dark"] button:hover:not(:disabled){background:#454545}
+html[data-theme="dark"] .auth-mode{background:#080808}
+html[data-theme="dark"] .auth-mode button{background:transparent;color:#aaa}
+html[data-theme="dark"] .auth-mode button.selected{background:#292929;color:#eee;box-shadow:0 1px 4px #000}
+html[data-theme="dark"] .auth-error,html[data-theme="dark"] #err{color:#bbb}
+html[data-theme="dark"] .gender-symbol{background:#292929;color:#ddd}
+html[data-theme="dark"] .age-badge{background:#292929;color:#ddd}
+html[data-theme="dark"] .gender-icon{filter:grayscale(1)}
+html[data-theme="dark"] #typing{color:#aaa}
+html[data-theme="dark"] #msgs,html[data-theme="dark"] .admin-transcript{background:#050505}
+html[data-theme="dark"] .msg,html[data-theme="dark"] .mine{background:#222;color:#eee}
+html[data-theme="dark"] .mine{background:#303030}
+html[data-theme="dark"] .briefing-message{background:#111;border-color:#333;color:#aaa}
+html[data-theme="dark"] .briefing-message h2{color:#ccc}
+html[data-theme="dark"] .briefing-message .brief-peer{border-color:#383838}
+html[data-theme="dark"] .tracking-disclosure{background:#171717;border-left-color:#555;color:#bbb}
+html[data-theme="dark"] .briefing-message #briefCountdown{color:#aaa}
+html[data-theme="dark"] .briefing-actions .start-chat{background:#303030}
+html[data-theme="dark"] .typing{background:#242424}
+html[data-theme="dark"] .typing-skeleton i{background:linear-gradient(100deg,#333 20%,#555 45%,#333 70%);background-size:220% 100%}
+html[data-theme="dark"] .leave-notice{background:#191919;border-color:#414141;border-left-color:#666;color:#ddd}
+html[data-theme="dark"] .leave-notice button{background:#252525;border-color:#505050;color:#ddd}
+html[data-theme="dark"] #liveChat input:disabled{background:#1a1a1a;color:#999}
+html[data-theme="dark"] .account-button,html[data-theme="dark"] .theme-button{background:#111;border-color:#444;color:#ddd}
+html[data-theme="dark"] .account-button:hover,html[data-theme="dark"] .account-button[aria-expanded="true"],html[data-theme="dark"] .theme-button:hover{background:#292929}
+html[data-theme="dark"] .account-panel .close-account{background:#292929;color:#ddd}
+html[data-theme="dark"] .account-panel input[readonly]{background:#1a1a1a;color:#aaa}
+html[data-theme="dark"] .account-actions{border-color:#383838}
+html[data-theme="dark"] .account-actions .delete-account{background:#383838}
+html[data-theme="dark"] .online-badge{border-color:#555;color:#ccc}
+html[data-theme="dark"] .online-badge i{background:#18c964;box-shadow:0 0 0 2px #18c96433}
+html[data-theme="dark"] .brand .online-badge{background:transparent;color:#ccc}
+html[data-theme="dark"] .online-badge b{color:#ddd}
+html[data-theme="dark"] :focus-visible{outline:2px solid #bbb;outline-offset:2px}
+html[data-theme="dark"] .theme-button .theme-sun{display:none}
+html[data-theme="dark"] .theme-button .theme-moon{display:block}
+html[data-theme="dark"] .chat-briefing{color:#aaa}
+html[data-theme="dark"] .chat-briefing h2,html[data-theme="dark"] .chat-briefing #briefCountdown{color:#ccc}
+html[data-theme="dark"] .chat-briefing .tracking-disclosure{background:transparent;color:#aaa}
+.site-footer{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;max-width:820px;margin:0 auto;padding:12px 16px 24px;color:#69766f;font-size:13px}
+.site-footer a{color:inherit;text-decoration:underline;text-underline-offset:2px}
+.legal-document{max-width:760px;margin:26px auto 32px;padding:28px;background:#fff;border:1px solid #d5dfdc;border-radius:8px;color:#26332d;line-height:1.6}
+.legal-document h1{margin:0 0 6px;font-size:28px;line-height:1.2}
+.legal-document h2{margin:24px 0 8px;font-size:18px;line-height:1.3}
+.legal-document p{margin:10px 0}
+.legal-document .legal-updated{margin-top:0;color:#68736d;font-size:13px}
+.legal-document .legal-review-note{display:inline-block;margin:0 0 14px;padding:3px 7px;border-radius:4px;background:#f3ead7;color:#6a5120;font-size:12px;font-weight:650}
+html[data-theme="dark"] .site-footer{color:#aaa}
+html[data-theme="dark"] .legal-document{background:#111;border-color:#333;color:#ddd}
+html[data-theme="dark"] .legal-document .legal-updated{color:#aaa}
+html[data-theme="dark"] .legal-document .legal-review-note{background:#302817;color:#e3c980}
+@media(max-width:560px){.legal-document{margin:16px auto 24px;padding:20px 16px}.legal-document h1{font-size:24px}.legal-document h2{margin-top:20px}}
+.brand-logo{display:block;width:min(180px,48vw);height:auto}
+.brand .logo-dark{display:none}
+html[data-theme="dark"] .brand .logo-light{display:none}
+html[data-theme="dark"] .brand .logo-dark{display:block}

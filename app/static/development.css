@@ -1,0 +1,2 @@
+.dev-mode-badge{display:inline-flex;align-items:center;flex:0 0 auto;padding:4px 8px;border:1px solid #9f2d23;border-radius:999px;background:#fff0ed;color:#9f2d23;font-size:11px;font-weight:750;line-height:1.2;white-space:nowrap}
+html[data-theme="dark"] .dev-mode-badge{border-color:#ff9388;background:#3a1816;color:#ffb4ad}

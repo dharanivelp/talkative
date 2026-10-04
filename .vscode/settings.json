@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^python -m compileall -q talkative_backend && python -c 'import importlib, os, tempfile; from pathlib import Path; d=tempfile\\.TemporaryDirectory\\(\\); root=Path\\(d\\.name\\); old=root/\"stranger_chat\\.db\"; old\\.touch\\(\\); os\\.environ\\[\"DATABASE_PATH\"\\]=str\\(root/\"talkative\\.db\"\\); config=importlib\\.import_module\\(\"talkative_backend\\.config\"\\); assert config\\.LEGACY_DB == old, config\\.LEGACY_DB; print\\(\"legacy DB fallback passed\"\\)'$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}

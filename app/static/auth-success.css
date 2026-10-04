@@ -1,0 +1,14 @@
+.signup-success{text-align:center;padding:28px 12px}
+.signup-step{margin:4px 0 18px;color:#62736a;font-size:.9rem;font-weight:650}
+.signup-success h2{color:#16834a;margin:14px 0 4px}
+.signup-success p{margin:0;color:#52645a}
+.availability-message{display:block;min-height:1.2em;margin-top:5px;font-size:.875rem;font-weight:500}
+.availability-message[data-state=available]{color:#16834a}
+.availability-message[data-state=taken],.availability-message[data-state=error]{color:#b91c1c}
+.availability-message[data-state=checking]{color:#68746e}
+.success-check{width:76px;height:76px;overflow:visible}
+.success-check-circle{fill:none;stroke:#1f9d55;stroke-width:4;stroke-dasharray:176;stroke-dashoffset:176;transform:rotate(-90deg);transform-origin:center;animation:success-circle 450ms ease-out forwards}
+.success-check-mark{fill:none;stroke:#1f9d55;stroke-width:5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:48;stroke-dashoffset:48;animation:success-mark 350ms 350ms ease-out forwards}
+@keyframes success-circle{to{stroke-dashoffset:0}}
+@keyframes success-mark{to{stroke-dashoffset:0}}
+@media(prefers-reduced-motion:reduce){.success-check-circle,.success-check-mark{animation:none;stroke-dashoffset:0}}

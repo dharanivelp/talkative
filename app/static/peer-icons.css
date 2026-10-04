@@ -1,0 +1,9 @@
+.age-badge{display:inline-flex;align-items:center;gap:6px;padding:3px 6px 3px 9px;border-radius:999px;background:#e4ede9;color:#205b50;font-size:13px;font-weight:650;white-space:nowrap}
+.gender-icon{position:relative;display:inline-grid;place-items:center;flex:0 0 22px;width:22px;height:22px;overflow:hidden;border-radius:50%;background:#d7e6e1;color:#126b61;transform:scale(1.35);transform-origin:center}
+.gender-icon svg{display:none;width:22px;height:22px}
+.gender-icon[data-gender="male"] svg,.gender-icon[data-gender="female"] svg{display:none!important}
+.gender-icon[data-gender="male"]::before,.gender-icon[data-gender="female"]::before{position:absolute;inset:0;content:"";background-position:center;background-size:100% 100%;background-repeat:no-repeat}
+.gender-icon[data-gender="male"]::before{background-image:url("/static/icons/male.svg")}
+.gender-icon[data-gender="female"]::before{background-image:url("/static/icons/female.svg")}
+.gender-icon[data-gender="male"] [data-gender-icon="male"],.gender-icon[data-gender="female"] [data-gender-icon="female"],.gender-icon[data-gender="neutral"] [data-gender-icon="neutral"]{display:block}
+.gender-icon[data-gender="neutral"] [data-gender-icon="neutral"]{fill:currentColor}
