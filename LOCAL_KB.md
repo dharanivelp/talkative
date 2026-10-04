@@ -2,15 +2,15 @@
 
 ## Architecture
 - Entry: `app.py` -> app factory in `talkative_backend/application.py`.
-- Project: folder `Talkative`; Compose project/image/container are named `talkative` (`talkative` app container, `talkative-redis` service container).
+- Project: folder `Talkative`; Compose project/image/container are named `talkative` (`talkative` app container).
 - User frontend: `app/templates/index.html`, `app/static/style.css`.
 - User/auth API: `talkative_backend/backend/auth.py`; chat API: `talkative_backend/backend/chat.py`; admin API: `talkative_backend/backend/admin.py`.
 - Core policy/auth/accounting helpers: `talkative_backend/core/functions.py`.
 - User data plane: `talkative_backend/planes/user_store.py` -> `users.db` (PII, password hashes, unique usernames/emails, country, private `usr_...` IDs, blocks), file mode 0600.
-- Live chat plane: `talkative_backend/planes/redis_chat_store.py` -> Redis (queue, active `dm...` sessions, transient messages and typing).
+- Live chat plane: `talkative_backend/planes/sqlite_chat_store.py` -> SQLite state store (queue, active `dm...` sessions, transient messages and typing).
 - Admin plane: `talkative_backend/planes/admin_store.py` -> `admin.db` (participant IDs, session metadata, ended transcript and audit events); ended records expire after 24h.
-- DB/secret paths and Redis credentials: `talkative_backend/config.py`; Docker: `docker-compose.yml` + `Dockerfile`.
-- Compose uses Talkative volume names; a one-shot migration service copies existing data from the previous volume names on first startup. Stop the old Compose stack before its first startup with the updated file.
+- DB/secret paths: `talkative_backend/config.py`; Docker: `docker-compose.yml` + `Dockerfile`.
+- Compose stores app databases in the persistent Talkative volume. Legacy Redis data is not imported into the SQLite state database.
 - Legacy source DB: `stranger_chat.db`; startup migration copies accounts to user DB when found. Existing legacy IDs are not exposed.
 
 ## UI Notes
@@ -42,18 +42,18 @@
 - Usernames are not shown to other participants; keep them out of all peer-facing API responses.
 - Browser sees own/private session state only; API message rows contain `mine`, not sender/participant user IDs.
 - Auth session roles are `user` and `admin`; admin endpoints must check `admin_authorized()`.
-- Chat text exists in Redis while active. On end it is archived with session/participant IDs to admin DB, then removed from Redis. Admin archive is purged based on ended time after 24h.
+- Chat text exists in the SQLite state database while active. On end it is archived with session/participant IDs to admin DB, then removed from active state. Admin archive is purged based on ended time after 24h.
 - Core routes: `/account`, `/api/auth/signup`, `/api/auth/login`, `/api/profile`, `/api/me`, `/api/score`, `/api/match`, `/api/messages/<dm-id>`, `/api/typing/<dm-id>`, `/api/leave`, `/admin`.
 - Legal routes: `/terms`, `/privacy`.
 
 ## Run / Validate
 - Install: `.venv/bin/python -m pip install -r requirements.txt`.
-- Local app requires Redis at `REDIS_URL`; use Compose to provide Redis: `docker compose up --build`.
+- Local app uses SQLite state at `STATE_DATABASE_PATH` (defaults to `state.db`); use Compose or run `python app.py`.
 - Admin configuration: `ADMIN_USERNAME`, required `ADMIN_PASSWORD`, `SESSION_SECRET` in root `.env`.
 - Local signup and login use development-only fixed OTP `123456`; Compose defaults to `APP_ENV=production`, which disables both until real email delivery is implemented.
-- Do not start servers unless the user asks. Focused tests should use temporary SQLite paths and a Redis mock/test instance.
+- Do not start servers unless the user asks. Focused tests should use temporary SQLite paths.
 
 ## Risks / Gaps
 - Admin password is an environment secret; use a long unique value. Admin login rate limiting and CSRF protection remain to be added before public deployment.
 - User emails are not verified; password recovery is not implemented.
-- Redis live messages are lost if Redis storage is cleared before a chat ends; Redis Compose volume enables AOF persistence.
+- Chat state, including active conversations, is held in `STATE_DATABASE_PATH`; persist and back up this file for deployment.

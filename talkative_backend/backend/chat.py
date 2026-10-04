@@ -5,7 +5,7 @@ import pycountry
 
 from talkative_backend.core.functions import age_category, audit, current_user, is_eligible, message_flags, parse_dob, public_profile_details, timestamp
 from talkative_backend.planes import admin_store, user_store
-from talkative_backend.planes import redis_chat_store as chat_store
+from talkative_backend.planes import sqlite_chat_store as chat_store
 
 chat_bp = Blueprint("chat", __name__)
 

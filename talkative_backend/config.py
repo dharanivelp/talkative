@@ -15,8 +15,7 @@ if not LEGACY_DB.exists() and LEGACY_DB.name == "talkative.db":
 	previous_db = LEGACY_DB.with_name("stranger_chat.db")
 	if previous_db.exists():
 		LEGACY_DB = previous_db
-REDIS_URL = os.getenv("REDIS_URL", "redis://127.0.0.1:6379/0")
-REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", "")
+STATE_DB = Path(os.getenv("STATE_DATABASE_PATH", BASE_DIR / "state.db"))
 SESSION_SECRET = os.getenv("SESSION_SECRET", "change-me")
 APP_ENV = os.getenv("APP_ENV", "development").strip().lower()
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")

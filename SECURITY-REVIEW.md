@@ -19,8 +19,8 @@ These are readiness gaps identified from the project notes and deployment docume
 
 - The project notes say CSRF protection and login/admin rate limits remain to be added. Add CSRF protection to state-changing browser endpoints and rate limits/abuse controls for login, signup, admin login, reporting, and chat operations.
 - Email verification and password recovery are not implemented. Add verified account ownership and a safe recovery flow, or explicitly decide whether launch without them is acceptable.
-- The deployment uses SQLite databases for user and admin data, a persistent Redis volume, and a single app container. Document and test the supported single-instance model; do not scale multiple app instances over SQLite without validating locking/concurrency and migration behavior.
-- The application holds account PII in SQLite and active chat content in Redis; Redis AOF is enabled, while ended transcripts are stored in the admin database for up to 24 hours. Define encryption, backup, access, expiry, and deletion behavior for every copy, including backups and migration volumes.
+- The deployment uses SQLite for user, admin, and live-chat state and supports one app instance. Keep the state database on persistent storage; do not scale multiple app instances over SQLite without validating locking/concurrency and migration behavior.
+- The application holds account PII and active chat content in SQLite; ended transcripts are stored in the admin database for up to 24 hours. Define encryption, backup, access, expiry, and deletion behavior for every copy, including backups and migration volumes.
 - Admin transcript access is high impact. Use a non-default, unique admin credential, restrict `/admin` to authorized operators, add MFA if feasible, review access audit events, and avoid broad production access.
 
 ## Indian law and compliance assessment
@@ -39,7 +39,7 @@ Talkative collects names, username, email, date of birth, gender, country, passw
 4. Publish the Data Fiduciary’s legal name and privacy/grievance contact. Make notices understandable and available at the point of collection.
 5. Put written privacy/security terms in place with hosting, email, monitoring, analytics, and other processors. Inventory cross-border transfers and check restrictions or government requirements before selecting providers or regions.
 6. Document appropriate security safeguards and a breach-response procedure, including assessment, escalation, evidence preservation, and notices to affected people and the Data Protection Board when required.
-7. Define deletion schedules for account data, chat archives, audit events, logs, and backups. The existing “up to 24 hours” chat archive statement must match actual Redis, admin database, backup, and operator-access behavior.
+7. Define deletion schedules for account data, chat archives, audit events, logs, and backups. The existing “up to 24 hours” chat archive statement must match actual state database, admin database, backup, and operator-access behavior.
 8. Keep evidence of consent, policy versions, user requests, retention/deletion jobs, access reviews, and incident exercises.
 
 The DPDP Act defines a child as a person under 18. Talkative’s Terms require users to be at least 18, so enforce that rule during signup and prevent underage accounts from using chat; a terms-only restriction is not an effective age gate. Have counsel establish escalation and reporting procedures for credible child-safety or illegal-content reports.
@@ -112,7 +112,7 @@ These are launch requirements recorded from product decisions. Completion status
 - Update the Terms wording about automated checks to match shipped behavior. Blocking reduces but cannot eliminate off-platform contact sharing.
 
 ### Conversation records, IP addresses, and activity history
-- Conversation ID: **yes, one is already generated.** `match_or_queue` in `talkative_backend/planes/redis_chat_store.py` creates `"dm" + uuid4().hex` when two users are matched, and `/api/match` returns it as `conversation_id`. It is also the key in the admin database.
+- Conversation ID: **yes, one is already generated.** `match_or_queue` in `talkative_backend/planes/sqlite_chat_store.py` creates `"dm" + uuid4().hex` when two users are matched, and `/api/match` returns it as `conversation_id`. It is also the key in the admin database.
 - Capture both participants' IP addresses at match time and store them with the conversation record. IPs are personal data: put them in the privacy notice, restrict admin access, set an explicit retention period, and trust only the real client IP from the TLS proxy (configure forwarded headers carefully, otherwise IPs can be spoofed). Retention must be reconciled with the current 24-hour admin archive and CERT-In log requirements.
 - Record per-conversation user activity events: chat started, left chat, message blocked with category (explicit/abusive, personal information, URL shared, threat, exploit), report, block, and chat ended. Store the category rather than extra copies of content.
 - Currently only coarse audit events exist (`chat_started`, `message_sent`, `message_blocked`, `user_reported`, `user_blocked`, `chat_ended`), without IP, without the blocked category, and `leave` is not audited separately.
@@ -121,13 +121,13 @@ These are launch requirements recorded from product decisions. Completion status
 - Accounts inactive for **1 year** must be processed for deletion. DPDP requires erasing personal data once the purpose is no longer served, and the privacy policy should state this period; confirm exact wording and any notice duties with counsel.
 - Define "inactive" precisely: no successful login or presence ping for 365 days (the schema has `last_active_date` for streaks; confirm it tracks logins and not only chat). Do not count marketing emails as activity.
 - Send warning notices (for example 30 and 7 days before) to the verified email, with a one-click way to keep the account, then delete automatically through a scheduled job.
-- Deletion must cover the user database row, blocks, Redis keys, and any admin-archive or audit records tied to the user, within the stated retention limits, and backups on their normal expiry cycle. Record a deletion audit event without personal data, and free the phone-number slot.
+- Deletion must cover the user database row, blocks, SQLite state keys, and any admin-archive or audit records tied to the user, within the stated retention limits, and backups on their normal expiry cycle. Record a deletion audit event without personal data, and free the phone-number slot.
 - Existing `delete_user` in `user_store.py` removes only the user and block rows, so a full-erasure routine is needed. Test the job on a staging copy first and make it idempotent with a dry-run mode.
 - Update the Privacy Policy and Terms (currently silent on inactivity) and the data-retention schedule.
 
 ### Logging and observability
 - Add structured (JSON) application logging with a request/correlation ID on every request, user ID and conversation ID where applicable, event name, outcome, and latency. Never log passwords, OTPs, session secrets, full message text, or full phone numbers/emails.
-- Log levels and rotation, shipped to central storage with alerts on error spikes, login/OTP abuse, Redis or database failures, and unhandled exceptions.
+- Log levels and rotation, shipped to central storage with alerts on error spikes, login/OTP abuse, SQLite failures, and unhandled exceptions.
 - Add health/readiness endpoints, error tracking, and metrics. Gunicorn access and error logs should be captured from the container.
 - Logs are personal data too: set retention, access controls, and keep security logs separate from chat content. CERT-In requires 180 days of ICT-system logs within India for covered entities; confirm applicability.
 
@@ -153,7 +153,7 @@ These are launch requirements recorded from product decisions. Completion status
 - [ ] Privacy and Terms drafts are reviewed by India-qualified counsel, finalized, and match actual product behavior.
 - [ ] Before enabling AdSense, ads are excluded from chat/private-communication screens, the Privacy Policy and any required consent flow reflect the actual ad configuration, and Google has approved the site.
 - [ ] Data inventory, retention schedule, processor list, rights/grievance process, incident response, and deletion verification are owned by named people.
-- [ ] Encrypted backups and restore tests cover user DB, admin DB, and Redis persistence; access is least-privilege.
+- [ ] Encrypted backups and restore tests cover user DB, admin DB, and state DB; access is least-privilege.
 
 ### Before production rollout
 

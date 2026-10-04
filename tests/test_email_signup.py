@@ -11,7 +11,7 @@ from talkative_backend.backend import auth
 from talkative_backend.planes import user_store
 
 
-class MemoryRedis:
+class MemoryStateStore:
     def __init__(self):
         self.values = {}
         self.hashes = {}
@@ -43,11 +43,7 @@ class MemoryRedis:
             self.hashes.pop(key, None)
             self.values.pop(key, None)
 
-    def eval(self, script, key_count, *arguments):
-        keys = arguments[:key_count]
-        argv = arguments[key_count:]
-        key, = keys[:1]
-        digest, max_attempts = argv[:2]
+    def verify_challenge(self, key, digest, max_attempts, verified_key=None, ttl_seconds=None):
         state = self.hashes.get(key)
         if not state:
             return [0, ""]
@@ -57,8 +53,8 @@ class MemoryRedis:
                 self.hashes.pop(key, None)
             return [-1, ""]
         payload = state["payload"]
-        if key_count > 1:
-            self.values[keys[1]] = payload
+        if verified_key:
+            self.values[verified_key] = payload
         self.hashes.pop(key, None)
         return [1, payload]
 
@@ -69,13 +65,13 @@ class SignupEmailOtpTests(unittest.TestCase):
         self.app.secret_key = "test-session-secret"
         self.app.register_blueprint(auth.auth_bp)
         self.client = self.app.test_client()
-        self.redis = MemoryRedis()
+        self.state_store = MemoryStateStore()
         self.environment_patcher = patch.object(auth, "APP_ENV", "development")
         self.environment_patcher.start()
         self.addCleanup(self.environment_patcher.stop)
-        self.redis_patcher = patch.object(auth.chat_store, "client", self.redis)
-        self.redis_patcher.start()
-        self.addCleanup(self.redis_patcher.stop)
+        self.state_patcher = patch.object(auth.chat_store, "client", self.state_store)
+        self.state_patcher.start()
+        self.addCleanup(self.state_patcher.stop)
 
     def signup_data(self):
         return {
@@ -279,7 +275,7 @@ class SignupEmailOtpTests(unittest.TestCase):
             "admin_created": True,
         }
         key = f"{auth.chat_store.PREFIX}signup-otp:{auth._email_key(email)}"
-        self.redis.hashes[key] = {
+        self.state_store.hashes[key] = {
             "otp_hash": auth._otp_digest(email, code),
             "payload": json.dumps(payload),
             "attempts": "0",

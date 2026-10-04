@@ -5,7 +5,6 @@ import secrets
 import sqlite3
 from datetime import datetime, timedelta, timezone
 
-import redis
 import pycountry
 from flask import Blueprint, jsonify, redirect, render_template, request, session, url_for
 from werkzeug.security import generate_password_hash
@@ -14,7 +13,7 @@ from talkative_backend.backend.auth import _send_signup_otp, close_user_activity
 from talkative_backend.config import ADMIN_PASSWORD, ADMIN_TRANSCRIPT_KEY, ADMIN_USERNAME, ACTIVITY_LOG_RETENTION_DAYS, COMPANY_COST_CURRENCY, COMPANY_COST_PER_DAY
 from talkative_backend.core.functions import admin_authorized, audit, is_eligible, parse_dob, timestamp
 from talkative_backend.planes import admin_store, user_store
-from talkative_backend.planes import redis_chat_store as chat_store
+from talkative_backend.planes import sqlite_chat_store as chat_store
 
 admin_bp = Blueprint("admin", __name__)
 
@@ -183,7 +182,7 @@ def create_user():
     }
     try:
         result, status = _send_signup_otp(email, payload)
-    except (redis.RedisError, sqlite3.Error):
+    except sqlite3.Error:
         return jsonify(error="unable to start email verification"), 503
     if status != 200:
         return result, status

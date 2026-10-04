@@ -6,7 +6,7 @@ from talkative_backend.backend.admin import admin_bp
 from talkative_backend.backend.auth import auth_bp
 from talkative_backend.backend.chat import chat_bp
 from talkative_backend.config import APP_ENV, BASE_DIR, SESSION_SECRET
-from talkative_backend.planes import admin_store, redis_chat_store, user_store
+from talkative_backend.planes import admin_store, sqlite_chat_store, user_store
 
 
 def create_app(initialize=True):
@@ -42,5 +42,5 @@ def create_app(initialize=True):
     if initialize:
         user_store.init()
         admin_store.init()
-        redis_chat_store.init()
+        sqlite_chat_store.init()
     return app

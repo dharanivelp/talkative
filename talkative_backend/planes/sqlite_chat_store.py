@@ -3,11 +3,7 @@ import time
 import uuid
 from datetime import datetime, timezone
 
-import redis
-
-from talkative_backend.config import REDIS_PASSWORD, REDIS_URL
-
-client = redis.Redis.from_url(REDIS_URL, password=REDIS_PASSWORD or None, decode_responses=True, socket_connect_timeout=3, socket_timeout=3)
+from talkative_backend.planes.sqlite_state_store import client
 PREFIX = "talkative:"
 PRESENCE_TIMEOUT = 25
 
@@ -119,48 +115,52 @@ def read_messages(session_id, user_id, after):
 
 def begin_leave(session_id, user_id, seconds=5):
     key = _session_key(session_id)
-    with client.lock(f"{PREFIX}leave-lock:{session_id}", timeout=5, blocking_timeout=5):
-        state = user_session(session_id, user_id)
-        if not state or state.get("ended_at"):
-            return None
-        existing_until = float(state.get("leave_until") or 0)
-        if state.get("leave_by") and existing_until > time.time():
-            return {"leave_by_me": state["leave_by"] == user_id, "leave_until": existing_until}
-        leave_until = time.time() + seconds
-        client.hset(key, mapping={"leave_by": user_id, "leave_until": leave_until})
-        return {"leave_by_me": True, "leave_until": leave_until}
+    with client.lock(f"{PREFIX}end-lock:{session_id}", timeout=5, blocking_timeout=5):
+        with client.lock(f"{PREFIX}leave-lock:{session_id}", timeout=5, blocking_timeout=5):
+            state = user_session(session_id, user_id)
+            if not state or state.get("ended_at"):
+                return None
+            existing_until = float(state.get("leave_until") or 0)
+            if state.get("leave_by") and existing_until > time.time():
+                return {"leave_by_me": state["leave_by"] == user_id, "leave_until": existing_until}
+            leave_until = time.time() + seconds
+            client.hset(key, mapping={"leave_by": user_id, "leave_until": leave_until})
+            return {"leave_by_me": True, "leave_until": leave_until}
 
 
 def cancel_leave(session_id, user_id):
     key = _session_key(session_id)
-    with client.lock(f"{PREFIX}leave-lock:{session_id}", timeout=5, blocking_timeout=5):
-        state = user_session(session_id, user_id)
-        if not state or state.get("ended_at") or state.get("leave_by") != user_id:
-            return False
-        if float(state.get("leave_until") or 0) <= time.time():
-            return False
-        client.hdel(key, "leave_by", "leave_until")
-        return True
+    with client.lock(f"{PREFIX}end-lock:{session_id}", timeout=5, blocking_timeout=5):
+        with client.lock(f"{PREFIX}leave-lock:{session_id}", timeout=5, blocking_timeout=5):
+            state = user_session(session_id, user_id)
+            if not state or state.get("ended_at") or state.get("leave_by") != user_id:
+                return False
+            if float(state.get("leave_until") or 0) <= time.time():
+                return False
+            client.hdel(key, "leave_by", "leave_until")
+            return True
 
 
 def set_typing(session_id, user_id, timestamp):
-    state = user_session(session_id, user_id)
-    if not state or state.get("ended_at") or (state.get("leave_by") and float(state.get("leave_until") or 0) > time.time()):
-        return False
-    peer_key = f"{PREFIX}typing:{session_id}:{user_id}"
-    client.set(peer_key, timestamp, ex=2)
-    return True
+    with client.lock(f"{PREFIX}end-lock:{session_id}", timeout=5, blocking_timeout=5):
+        state = user_session(session_id, user_id)
+        if not state or state.get("ended_at") or (state.get("leave_by") and float(state.get("leave_until") or 0) > time.time()):
+            return False
+        peer_key = f"{PREFIX}typing:{session_id}:{user_id}"
+        client.set(peer_key, timestamp, ex=2)
+        return True
 
 
 def add_message(session_id, user_id, text, timestamp):
-    state = user_session(session_id, user_id)
-    if not state or state.get("ended_at") or (state.get("leave_by") and float(state.get("leave_until") or 0) > time.time()):
-        return False
-    sequence_key = f"{PREFIX}sequence:{session_id}"
-    sequence = client.incr(sequence_key)
-    payload = json.dumps({"id": sequence, "sender_user_id": user_id, "text": text, "created_at": timestamp})
-    client.zadd(_messages_key(session_id), {payload: sequence})
-    return True
+    with client.lock(f"{PREFIX}end-lock:{session_id}", timeout=5, blocking_timeout=5):
+        state = user_session(session_id, user_id)
+        if not state or state.get("ended_at") or (state.get("leave_by") and float(state.get("leave_until") or 0) > time.time()):
+            return False
+        sequence_key = f"{PREFIX}sequence:{session_id}"
+        sequence = client.incr(sequence_key)
+        payload = json.dumps({"id": sequence, "sender_user_id": user_id, "text": text, "created_at": timestamp})
+        client.zadd(_messages_key(session_id), {payload: sequence})
+        return True
 
 
 def end_session(session_id, user_id, timestamp):
@@ -205,4 +205,5 @@ def cleanup_ended(session_id):
 
 
 def leave_queue(user_id):
-    client.zrem(f"{PREFIX}queue", user_id)
+    with client.lock(f"{PREFIX}match-lock", timeout=5, blocking_timeout=5):
+        client.zrem(f"{PREFIX}queue", user_id)

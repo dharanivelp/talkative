@@ -7,7 +7,6 @@ import secrets
 import sqlite3
 from datetime import datetime, timezone
 
-import redis
 import pycountry
 from flask import Blueprint, jsonify, redirect, render_template, request, session
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -15,7 +14,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from talkative_backend.config import APP_ENV, SESSION_SECRET
 from talkative_backend.core.functions import PASSWORD_REQUIREMENTS, age_category, audit, current_user, is_eligible, is_strong_password, parse_dob, public_profile_details, timestamp
 from talkative_backend.planes import admin_store, user_store
-from talkative_backend.planes import redis_chat_store as chat_store
+from talkative_backend.planes import sqlite_chat_store as chat_store
 
 auth_bp = Blueprint("auth", __name__)
 TERMS_VERSION = "2026-10-04"
@@ -225,39 +224,11 @@ def _send_signup_otp(email, payload=None, limits_checked=False):
     try:
         chat_store.client.hset(state_key, mapping=state)
         chat_store.client.expire(state_key, SIGNUP_OTP_TTL)
-    except redis.RedisError:
+    except sqlite3.Error:
         chat_store.client.delete(state_key, cooldown_key)
         logger.exception("Signup verification state could not be stored")
         return jsonify(error="Unable to start verification right now. Try again later."), 503
     return jsonify(**SIGNUP_OTP_GENERIC_RESPONSE), 200
-
-
-_VERIFY_SIGNUP_OTP_SCRIPT = """
-local stored = redis.call('HGET', KEYS[1], 'otp_hash')
-if not stored then return {0, ''} end
-if stored ~= ARGV[1] then
-    local attempts = redis.call('HINCRBY', KEYS[1], 'attempts', 1)
-    if attempts >= tonumber(ARGV[2]) then redis.call('DEL', KEYS[1]) end
-    return {-1, ''}
-end
-local payload = redis.call('HGET', KEYS[1], 'payload')
-if KEYS[2] then redis.call('SET', KEYS[2], payload, 'EX', ARGV[3]) end
-redis.call('DEL', KEYS[1])
-return {1, payload}
-"""
-
-_VERIFY_LOGIN_OTP_SCRIPT = """
-local stored = redis.call('HGET', KEYS[1], 'otp_hash')
-if not stored then return {0, ''} end
-if stored ~= ARGV[1] then
-    local attempts = redis.call('HINCRBY', KEYS[1], 'attempts', 1)
-    if attempts >= tonumber(ARGV[2]) then redis.call('DEL', KEYS[1]) end
-    return {-1, ''}
-end
-local payload = redis.call('HGET', KEYS[1], 'payload')
-redis.call('DEL', KEYS[1])
-return {1, payload}
-"""
 
 
 def close_user_activity(user_id):
@@ -324,7 +295,7 @@ def signup():
             return jsonify(error="An account with this email already exists. Log in or use a different email."), 409
         if not _apply_signup_rate_limits(email):
             return jsonify(error="Too many requests. Try again later."), 429
-    except (redis.RedisError, sqlite3.Error):
+    except sqlite3.Error:
         logger.exception("Signup verification request failed")
         return jsonify(error="Unable to start signup verification right now."), 503
     if not first_name or len(first_name) > 60 or not last_name or len(last_name) > 60 or len(name) > 120:
@@ -353,7 +324,7 @@ def signup():
     }
     try:
         return _send_signup_otp(email, payload, limits_checked=True)
-    except (redis.RedisError, sqlite3.Error):
+    except sqlite3.Error:
         logger.exception("Signup verification request failed")
         return jsonify(error="Unable to start signup verification right now."), 503
 
@@ -387,7 +358,7 @@ def resend_signup_otp():
         if not raw_payload:
             return jsonify(**SIGNUP_OTP_GENERIC_RESPONSE)
         return _send_signup_otp(email, json.loads(raw_payload))
-    except (redis.RedisError, sqlite3.Error, TypeError, ValueError):
+    except (sqlite3.Error, TypeError, ValueError):
         logger.exception("Signup verification resend failed")
         return jsonify(error="Unable to resend a verification email right now."), 503
 
@@ -402,7 +373,7 @@ def verify_signup_email():
     state_key = f"{chat_store.PREFIX}signup-otp:{_email_key(email)}"
     try:
         pending_json = chat_store.client.hget(state_key, "payload")
-    except redis.RedisError:
+    except sqlite3.Error:
         logger.exception("Signup verification check failed")
         return jsonify(error="Unable to verify the code right now."), 503
     if not pending_json:
@@ -413,16 +384,19 @@ def verify_signup_email():
         logger.error("Signup verification state is invalid")
         return jsonify(error="Unable to verify the code right now."), 503
     signup_token = None
-    keys = [state_key]
-    args = [_otp_digest(email, code), SIGNUP_OTP_MAX_ATTEMPTS]
+    verified_key = None
     if not payload.get("admin_created"):
         signup_token = secrets.token_urlsafe(32)
         verified_key = f"{chat_store.PREFIX}signup-verified:{_email_key(signup_token)}"
-        keys.append(verified_key)
-        args.append(SIGNUP_OTP_TTL)
     try:
-        result = chat_store.client.eval(_VERIFY_SIGNUP_OTP_SCRIPT, len(keys), *keys, *args)
-    except redis.RedisError:
+        result = chat_store.client.verify_challenge(
+            state_key,
+            _otp_digest(email, code),
+            SIGNUP_OTP_MAX_ATTEMPTS,
+            verified_key=verified_key,
+            ttl_seconds=SIGNUP_OTP_TTL if verified_key else None,
+        )
+    except sqlite3.Error:
         logger.exception("Signup verification check failed")
         return jsonify(error="Unable to verify the code right now."), 503
     if int(result[0]) == 0:
@@ -476,7 +450,7 @@ def complete_signup():
             return result
         chat_store.client.delete(verified_key)
         return result
-    except (redis.RedisError, sqlite3.Error, TypeError, ValueError, KeyError):
+    except (sqlite3.Error, TypeError, ValueError, KeyError):
         logger.exception("Verified signup could not be completed")
         return jsonify(error="Unable to create your account right now."), 503
 
@@ -514,7 +488,7 @@ def login():
             "attempts": "0",
         })
         chat_store.client.expire(key, SIGNUP_OTP_TTL)
-    except redis.RedisError:
+    except sqlite3.Error:
         logger.exception("Login verification state could not be stored")
         return jsonify(error="Unable to start login verification right now."), 503
     audit("login_otp_requested", user_id)
@@ -535,10 +509,10 @@ def verify_login_otp():
         return jsonify(error="Enter the six-digit verification code."), 400
     key = f"{chat_store.PREFIX}login-otp:{_email_key(challenge_id)}"
     try:
-        result = chat_store.client.eval(
-            _VERIFY_LOGIN_OTP_SCRIPT, 1, key, _login_otp_digest(challenge_id, code), SIGNUP_OTP_MAX_ATTEMPTS
+        result = chat_store.client.verify_challenge(
+            key, _login_otp_digest(challenge_id, code), SIGNUP_OTP_MAX_ATTEMPTS
         )
-    except redis.RedisError:
+    except sqlite3.Error:
         logger.exception("Login verification check failed")
         return jsonify(error="Unable to verify the code right now."), 503
     if int(result[0]) != 1:
