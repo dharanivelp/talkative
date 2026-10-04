@@ -22,3 +22,5 @@ User IDs are private opaque identifiers. User APIs do not return another partici
 The app requires Redis. Do not run `python app.py` by itself unless a Redis server is already available at `REDIS_URL`.
 
 Legacy accounts are copied from `DATABASE_PATH` to the user database on startup; old match preferences are not migrated. Configure TLS, CSRF protection, login rate limits, and real email verification before public deployment.
+
+For AIC's native Python Deploy App service, see [AIC_DEPLOY.md](AIC_DEPLOY.md). That service does not run Compose: configure a reachable Redis service and persistent storage for the SQLite database files.
