@@ -23,4 +23,4 @@ The app requires Redis. Do not run `python app.py` by itself unless a Redis serv
 
 Legacy accounts are copied from `DATABASE_PATH` to the user database on startup; old match preferences are not migrated. Configure TLS, CSRF protection, login rate limits, and real email verification before public deployment.
 
-For AIC's native Python Deploy App service, see [AIC_DEPLOY.md](AIC_DEPLOY.md). That service does not run Compose: configure a reachable Redis service and persistent storage for the SQLite database files.
+For AIC Docker Deploy App setup, see [AIC_DEPLOY.md](AIC_DEPLOY.md). The app image requires a separately reachable Redis service and persistent storage for SQLite database files; AIC must provide a Docker-capable runtime.

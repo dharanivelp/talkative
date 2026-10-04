@@ -6,4 +6,4 @@ COPY app.py .
 COPY app ./app
 COPY talkative_backend ./talkative_backend
 EXPOSE 8000
-CMD ["gunicorn","--bind","0.0.0.0:8000","--workers","2","app:app"]
+CMD ["sh","-c","exec gunicorn --bind 0.0.0.0:${PORT:-8000} --workers 2 app:app"]
