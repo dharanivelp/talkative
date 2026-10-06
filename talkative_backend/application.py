@@ -5,7 +5,7 @@ from flask import Flask, g, request
 from talkative_backend.backend.admin import admin_bp
 from talkative_backend.backend.auth import auth_bp
 from talkative_backend.backend.chat import chat_bp
-from talkative_backend.config import APP_ENV, BASE_DIR, SESSION_SECRET
+from talkative_backend.config import APP_ENV, BASE_DIR, PUBLIC_SITE_URL, SESSION_SECRET
 from talkative_backend.planes import admin_store, sqlite_chat_store, user_store
 
 
@@ -16,7 +16,7 @@ def create_app(initialize=True):
 
     @app.context_processor
     def inject_environment():
-        return {"app_env": APP_ENV}
+        return {"app_env": APP_ENV, "site_url": PUBLIC_SITE_URL}
 
     @app.before_request
     def start_request_timer():

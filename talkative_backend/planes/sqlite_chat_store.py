@@ -9,6 +9,7 @@ PRESENCE_TIMEOUT = 25
 
 
 def init():
+    client.init()
     client.ping()
 
 

@@ -18,6 +18,7 @@ if not LEGACY_DB.exists() and LEGACY_DB.name == "talkative.db":
 STATE_DB = Path(os.getenv("STATE_DATABASE_PATH", BASE_DIR / "state.db"))
 SESSION_SECRET = os.getenv("SESSION_SECRET", "change-me")
 APP_ENV = os.getenv("APP_ENV", "development").strip().lower()
+PUBLIC_SITE_URL = os.getenv("PUBLIC_SITE_URL", "https://talkative.space").strip().rstrip("/")
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "")
 ADMIN_TRANSCRIPT_KEY = os.getenv("ADMIN_TRANSCRIPT_KEY", "")

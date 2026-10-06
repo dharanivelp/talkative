@@ -3,7 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+{% if app_env == "production" %}<meta name="robots" content="index,follow">{% else %}<meta name="robots" content="noindex,nofollow">{% endif %}
 <title>Privacy Policy | Talkative</title>
+<meta name="description" content="Learn how Talkative collects, uses, shares, and retains personal information when you visit or use the service.">
+<link rel="canonical" href="{{ site_url }}/privacy">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Talkative">
+<meta property="og:title" content="Privacy Policy | Talkative">
+<meta property="og:description" content="See what information Talkative handles, how it is used, and the privacy choices available to you.">
+<meta property="og:url" content="{{ site_url }}/privacy">
 <link rel="icon" type="image/png" sizes="64x64" href="/static/logo/Talkative_Favicon_Black_Transparent_64x64.png" media="(prefers-color-scheme: light)">
 <link rel="icon" type="image/png" sizes="64x64" href="/static/logo/Talkative_Favicon_White_Transparent_64x64.png" media="(prefers-color-scheme: dark)">
 <script>try{if(localStorage.getItem("talkative-theme")==="dark")document.documentElement.dataset.theme="dark"}catch{}</script>

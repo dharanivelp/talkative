@@ -19,6 +19,8 @@ User IDs are private opaque identifiers. User APIs do not return another partici
 4. Start the app with `docker compose up --build` or `python app.py`.
 5. Open `http://127.0.0.1:8000`; admin history is at `/admin`.
 
+Set `PUBLIC_SITE_URL` to the canonical HTTPS domain when it differs from `https://talkative.space`. Production serves `robots.txt` and a sitemap for the public home, terms, and privacy pages; development sends `noindex` and blocks crawling.
+
 The chat state database path is configured with `STATE_DATABASE_PATH`. For production, place it on persistent storage.
 
 Legacy accounts are copied from `DATABASE_PATH` to the user database on startup; old match preferences are not migrated. Configure TLS, CSRF protection, login rate limits, and real email verification before public deployment.

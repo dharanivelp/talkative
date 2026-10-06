@@ -9,6 +9,7 @@ services:
       - "8000:8000"
     environment:
       APP_ENV: ${APP_ENV:-production}
+      PUBLIC_SITE_URL: ${PUBLIC_SITE_URL:-https://talkative.space}
       SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET in .env}
       USER_DATABASE_PATH: /data/users.db
       ADMIN_DATABASE_PATH: /data/admin.db

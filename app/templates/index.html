@@ -1,9 +1,20 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Talkative</title>
+{% if app_env == "production" %}<meta name="robots" content="index,follow">{% else %}<meta name="robots" content="noindex,nofollow">{% endif %}
+<title>Talkative | Meet People Through Real Conversations</title>
+<meta name="description" content="Talkative helps adults meet new people through one-to-one conversations. Create an account, find someone to chat with, and connect respectfully.">
+<link rel="canonical" href="{{ site_url }}/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Talkative">
+<meta property="og:title" content="Talkative | Meet People Through Real Conversations">
+<meta property="og:description" content="Meet new people through one-to-one conversations on Talkative. Connect respectfully and chat at your own pace.">
+<meta property="og:url" content="{{ site_url }}/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Talkative | Meet People Through Real Conversations">
+<meta name="twitter:description" content="Meet new people through one-to-one conversations on Talkative. Connect respectfully and chat at your own pace.">
 <link rel="icon" type="image/png" sizes="64x64" href="/static/logo/Talkative_Favicon_Black_Transparent_64x64.png" media="(prefers-color-scheme: light)">
 <link rel="icon" type="image/png" sizes="64x64" href="/static/logo/Talkative_Favicon_White_Transparent_64x64.png" media="(prefers-color-scheme: dark)">
 <script>try{if(localStorage.getItem("talkative-theme")==="dark")document.documentElement.dataset.theme="dark"}catch{}</script>
@@ -95,6 +106,12 @@
 <div id="leaveNotice" class="leave-notice hidden" role="status"><span id="leaveNoticeText"></span><button id="cancelLeaveButton" class="hidden" type="button" onclick="cancelLeave()">Cancel</button></div>
 <form onsubmit="send(event)"><input id="text" maxlength="128" autocomplete="off" aria-label="Message" oninput="notifyTyping()"><button>Send</button></form>
 </div>
+</section>
+<section class="card seo-intro">
+<h2>Meet people through conversations</h2>
+<p>Talkative is a place for adults to meet new people in one-to-one conversations. Create an account, find someone to chat with, and get to know each other at your own pace.</p>
+<h2>Chat with care</h2>
+<p>Protect your personal information, treat other people respectfully, and use the report or block controls if a conversation makes you uncomfortable. Read our <a href="/terms">Terms and Conditions</a> and <a href="/privacy">Privacy Policy</a> before you join.</p>
 </section>
 </main>
 {% include "_footer.html" %}

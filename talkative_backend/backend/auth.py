@@ -8,10 +8,10 @@ import sqlite3
 from datetime import datetime, timezone
 
 import pycountry
-from flask import Blueprint, jsonify, redirect, render_template, request, session
+from flask import Blueprint, Response, jsonify, redirect, render_template, request, session
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from talkative_backend.config import APP_ENV, SESSION_SECRET
+from talkative_backend.config import APP_ENV, PUBLIC_SITE_URL, SESSION_SECRET
 from talkative_backend.core.functions import PASSWORD_REQUIREMENTS, age_category, audit, current_user, is_eligible, is_strong_password, parse_dob, public_profile_details, timestamp
 from talkative_backend.planes import admin_store, user_store
 from talkative_backend.planes import sqlite_chat_store as chat_store
@@ -268,6 +268,34 @@ def terms_page():
 @auth_bp.get("/privacy")
 def privacy_page():
     return render_template("privacy.html")
+
+
+@auth_bp.get("/robots.txt")
+def robots_txt():
+    if APP_ENV != "production":
+        body = "User-agent: *\nDisallow: /\n"
+    else:
+        body = (
+            "User-agent: *\n"
+            "Disallow: /account\n"
+            "Disallow: /admin\n"
+            "Disallow: /api/\n"
+            f"Sitemap: {PUBLIC_SITE_URL}/sitemap.xml\n"
+        )
+    return Response(body, mimetype="text/plain")
+
+
+@auth_bp.get("/sitemap.xml")
+def sitemap_xml():
+    body = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+        f"<url><loc>{PUBLIC_SITE_URL}/</loc></url>"
+        f"<url><loc>{PUBLIC_SITE_URL}/terms</loc></url>"
+        f"<url><loc>{PUBLIC_SITE_URL}/privacy</loc></url>"
+        "</urlset>"
+    )
+    return Response(body, mimetype="application/xml")
 
 
 @auth_bp.post("/api/auth/signup")

@@ -9,6 +9,15 @@ from talkative_backend.planes import sqlite_chat_store, sqlite_state_store
 
 
 class ChatLifecycleTests(unittest.TestCase):
+    def test_init_creates_state_tables_before_health_check(self):
+        with tempfile.TemporaryDirectory() as directory:
+            database_path = Path(directory) / "state.db"
+            with patch.object(sqlite_state_store, "STATE_DB", database_path):
+                state = sqlite_state_store.SQLiteStateStore()
+                with patch.object(sqlite_chat_store, "client", state):
+                    sqlite_chat_store.init()
+                self.assertEqual(state.incr("signup-rate-limit"), 1)
+
     def test_match_message_typing_leave_and_end_use_persistent_state(self):
         with tempfile.TemporaryDirectory() as directory:
             database_path = Path(directory) / "state.db"
