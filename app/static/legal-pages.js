@@ -30,8 +30,11 @@ async function loadSignedInHeader() {
         if (onlineResponse.ok) {
             const data = await onlineResponse.json();
             const badge = document.getElementById("onlineBadge");
-            document.getElementById("onlineCount").textContent = data.online;
-            badge.setAttribute("aria-label", data.online + " users online");
+            document.getElementById("onlineCount").textContent = data.demo ? `${data.online} online` : data.online;
+            badge.setAttribute(
+                "aria-label",
+                data.demo ? `Demo count, not actual users: ${data.online}` : `${data.online} users online`,
+            );
         }
     } catch {}
 }

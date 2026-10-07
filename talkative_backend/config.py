@@ -18,6 +18,9 @@ if not LEGACY_DB.exists() and LEGACY_DB.name == "talkative.db":
 STATE_DB = Path(os.getenv("STATE_DATABASE_PATH", BASE_DIR / "state.db"))
 SESSION_SECRET = os.getenv("SESSION_SECRET", "change-me")
 APP_ENV = os.getenv("APP_ENV", "development").strip().lower()
+DEMO_ONLINE_COUNT_ENABLED = os.getenv("DEMO_ONLINE_COUNT_ENABLED", "false").strip().lower() in {
+    "1", "true", "yes", "on",
+}
 PUBLIC_SITE_URL = os.getenv("PUBLIC_SITE_URL", "https://talkative.space").strip().rstrip("/")
 SMTP_HOST = os.getenv("SMTP_HOST", "").strip()
 try:

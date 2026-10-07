@@ -11,7 +11,7 @@ import pycountry
 from flask import Blueprint, Response, jsonify, redirect, render_template, request, session
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from talkative_backend.config import APP_ENV, PUBLIC_SITE_URL, SESSION_SECRET
+from talkative_backend.config import APP_ENV, DEMO_ONLINE_COUNT_ENABLED, PUBLIC_SITE_URL, SESSION_SECRET
 from talkative_backend.core.functions import PASSWORD_REQUIREMENTS, age_category, audit, current_user, is_eligible, is_strong_password, parse_dob, public_profile_details, timestamp
 from talkative_backend.emailer import EmailConfigurationError, EmailDeliveryError, send_otp_email
 from talkative_backend.planes import admin_store, user_store
@@ -20,6 +20,7 @@ from talkative_backend.planes import sqlite_chat_store as chat_store
 auth_bp = Blueprint("auth", __name__)
 TERMS_VERSION = "2026-10-04"
 logger = logging.getLogger(__name__)
+_last_demo_online_count = None
 SIGNUP_OTP_TTL = 120
 SIGNUP_OTP_MAX_ATTEMPTS = 5
 OTP_SEND_EMAIL_LIMIT = 5
@@ -856,6 +857,13 @@ def presence():
 
 @auth_bp.get("/api/online")
 def online():
+    global _last_demo_online_count
+    if DEMO_ONLINE_COUNT_ENABLED:
+        count = 111 + secrets.randbelow(889)
+        if count == _last_demo_online_count:
+            count = 111 + ((count - 110) % 889)
+        _last_demo_online_count = count
+        return jsonify(online=count, demo=True)
     if not current_user():
         return jsonify(error="login required"), 401
     return jsonify(online=chat_store.online_count())

@@ -228,6 +228,26 @@ class SignupEmailOtpTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             parse_dob("31/02/1990")
 
+    def test_online_count_is_public_and_labeled_when_demo_mode_is_enabled(self):
+        with patch.object(auth, "DEMO_ONLINE_COUNT_ENABLED", True), \
+                patch.object(auth, "_last_demo_online_count", None), \
+                patch.object(auth.secrets, "randbelow", return_value=7):
+            response = self.client.get("/api/online")
+            second_response = self.client.get("/api/online")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json["demo"])
+        self.assertEqual(response.json["online"], 118)
+        self.assertEqual(second_response.json["online"], 119)
+        self.assertGreaterEqual(response.json["online"], 111)
+        self.assertLessEqual(response.json["online"], 999)
+
+    def test_online_count_remains_authenticated_when_demo_mode_is_disabled(self):
+        with patch.object(auth, "DEMO_ONLINE_COUNT_ENABLED", False):
+            response = self.client.get("/api/online")
+
+        self.assertEqual(response.status_code, 401)
+
     @patch.object(auth, "audit")
     @patch.object(auth, "check_password_hash", return_value=True)
     @patch.object(auth.user_store, "by_email")

@@ -10,6 +10,7 @@
 - Live chat plane: `talkative_backend/planes/sqlite_chat_store.py` -> SQLite state store (queue, active `dm...` sessions, transient messages and typing).
 - Admin plane: `talkative_backend/planes/admin_store.py` -> `admin.db` (participant IDs, session metadata, ended transcript and audit events); ended records expire after 24h.
 - Admin dashboard includes a read-only support inbox over IMAP; its active-user metric counts unique users in the selected period, separately from users currently online. Audit records identify anonymous, user, or admin actors, and retain events per configured activity-log retention.
+- `DEMO_ONLINE_COUNT_ENABLED=true` enables a clearly labeled, fluctuating demo count in the site header; it is not live user presence. It defaults to false, which preserves the real online count for signed-in users and hides it on login.
 - DB/secret paths: `talkative_backend/config.py`; Docker: `docker-compose.yml` + `Dockerfile`.
 - Compose stores app databases in the persistent Talkative volume. Legacy Redis data is not imported into the SQLite state database.
 - Legacy source DB: `stranger_chat.db`; startup migration copies accounts to user DB when found, but hashed email tombstones prevent deleted accounts from being restored. Existing legacy IDs are not exposed.

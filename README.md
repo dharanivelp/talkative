@@ -16,8 +16,9 @@ User IDs are private opaque identifiers. User APIs do not return another partici
 1. `cp .env.example .env`
 2. Set unique strong values for `SESSION_SECRET` and `ADMIN_PASSWORD` in `.env`.
 3. For production OTP delivery, set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, and `SMTP_FROM` in `.env`. For AIC Cloud mailboxes, use `mail.aiccloud.in`, port `587` (STARTTLS), and the mailbox username/password. The admin Support inbox uses `IMAP_HOST=mail.aiccloud.in` and `IMAP_PORT=993` (SSL), reusing the SMTP username/password. Keep the mailbox password private and do not commit `.env`. In development, `APP_ENV=development` uses the fixed code `123456`; production generates and emails a random code. Signup uses a native date picker for DOB; login includes an email-OTP password reset option.
-4. Start the app with `docker compose up --build` or `python app.py`.
-5. Open `http://127.0.0.1:8000`; admin history is at `/admin`.
+4. `DEMO_ONLINE_COUNT_ENABLED` defaults to `false`. Set it to `true` only for experiments; the fluctuating count is explicitly labeled as a demo and is not real user presence. When disabled, the actual online count remains available to signed-in users only.
+5. Start the app with `docker compose up --build` or `python app.py`.
+6. Open `http://127.0.0.1:8000`; admin history is at `/admin`.
 
 Set `PUBLIC_SITE_URL` to the canonical HTTPS domain when it differs from `https://talkative.space`. Production serves `robots.txt` and a sitemap for the public home, terms, and privacy pages; development sends `noindex` and blocks crawling.
 
