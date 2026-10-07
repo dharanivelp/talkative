@@ -72,7 +72,9 @@ def init():
             user_id TEXT,
             session_id TEXT,
             occurred_at TEXT NOT NULL,
-            ip TEXT NOT NULL DEFAULT ''
+            ip TEXT NOT NULL DEFAULT '',
+            actor_role TEXT NOT NULL DEFAULT 'unknown',
+            actor_id TEXT NOT NULL DEFAULT ''
         );
         CREATE INDEX IF NOT EXISTS accounting_time_idx ON accounting(occurred_at);
         CREATE INDEX IF NOT EXISTS accounting_user_idx ON accounting(user_id,occurred_at);
@@ -106,6 +108,11 @@ def init():
                 db.execute(f"ALTER TABLE chat_history ADD COLUMN {column} TEXT NOT NULL DEFAULT ''")
         if "ip" not in {row[1] for row in db.execute("PRAGMA table_info(accounting)")}:
             db.execute("ALTER TABLE accounting ADD COLUMN ip TEXT NOT NULL DEFAULT ''")
+        accounting_columns = {row[1] for row in db.execute("PRAGMA table_info(accounting)")}
+        if "actor_role" not in accounting_columns:
+            db.execute("ALTER TABLE accounting ADD COLUMN actor_role TEXT NOT NULL DEFAULT 'unknown'")
+        if "actor_id" not in accounting_columns:
+            db.execute("ALTER TABLE accounting ADD COLUMN actor_id TEXT NOT NULL DEFAULT ''")
         purge(db)
 
 
@@ -130,12 +137,16 @@ def finish_session(session_id, ended_at, duration_seconds, transcript):
                    (max(0, int(duration_seconds or 0)), day))
 
 
-def record_event(event, user_id=None, session_id=None, ip=""):
+def record_event(event, user_id=None, session_id=None, ip="", actor_role="unknown", actor_id=""):
     with database() as db:
         purge(db)
         occurred_at = datetime.now(timezone.utc).isoformat()
         day = occurred_at[:10]
-        db.execute("INSERT INTO accounting(event,user_id,session_id,occurred_at,ip) VALUES(?,?,?,?,?)", (event, user_id, session_id, occurred_at, ip or ""))
+        db.execute(
+            "INSERT INTO accounting(event,user_id,session_id,occurred_at,ip,actor_role,actor_id) "
+            "VALUES(?,?,?,?,?,?,?)",
+            (event, user_id, session_id, occurred_at, ip or "", actor_role, actor_id or ""),
+        )
         if event == "account_created" or event in INCIDENT_EVENTS or event == "user_reported":
             db.execute("INSERT OR IGNORE INTO daily_metrics(day) VALUES(?)", (day,))
             column = "new_users" if event == "account_created" else "reports" if event == "user_reported" else "incidents"
@@ -211,8 +222,10 @@ def activity_log(query="", limit=200):
     with database() as db:
         purge(db)
         return [dict(row) for row in db.execute(
-            "SELECT occurred_at,event,user_id,session_id,ip FROM accounting WHERE (?='' OR event LIKE ? OR user_id LIKE ? OR session_id LIKE ? OR ip LIKE ?) ORDER BY id DESC LIMIT ?",
-            (query, like, like, like, like, max(1, min(500, int(limit)))),
+            "SELECT occurred_at,event,user_id,session_id,ip,actor_role,actor_id FROM accounting "
+            "WHERE (?='' OR event LIKE ? OR user_id LIKE ? OR session_id LIKE ? OR ip LIKE ? "
+            "OR actor_role LIKE ? OR actor_id LIKE ?) ORDER BY id DESC LIMIT ?",
+            (query, like, like, like, like, like, like, max(1, min(500, int(limit)))),
         )]
 
 
@@ -231,8 +244,9 @@ def user_activity(user_id, limit=300):
     with database() as db:
         purge(db)
         return [dict(row) for row in db.execute(
-            "SELECT occurred_at,event,session_id,ip FROM accounting WHERE user_id=? ORDER BY id DESC LIMIT ?",
-            (user_id, max(1, min(500, int(limit)))),
+            "SELECT occurred_at,event,session_id,ip,actor_role,actor_id FROM accounting "
+            "WHERE user_id=? OR actor_id=? ORDER BY id DESC LIMIT ?",
+            (user_id, user_id, max(1, min(500, int(limit)))),
         )]
 
 

@@ -171,6 +171,49 @@ async function loadSessions(event) {
     }
 }
 
+async function loadInbox() {
+    const table = document.getElementById("inboxTable");
+    table.replaceChildren();
+    status("Loading support inbox…", false, "inboxStatus");
+    try {
+        const data = await adminRequest("/admin/api/inbox");
+        if (!data.messages.length) {
+            const row = document.createElement("tr");
+            const cell = addCell(row, "Inbox is empty.", "empty-state");
+            cell.colSpan = 5;
+            table.append(row);
+        }
+        data.messages.forEach((message) => {
+            const row = document.createElement("tr");
+            addCell(row, formatDate(message.date));
+            addCell(row, message.from);
+            addCell(row, message.subject);
+            addCell(row, message.is_read ? "Read" : "Unread");
+            const actions = document.createElement("td");
+            actions.append(button("View", "inbox-message", message.uid));
+            row.append(actions);
+            table.append(row);
+        });
+        status(data.has_more ? "Showing the 50 most recent messages." : "", false, "inboxStatus");
+    } catch (error) {
+        status(error.message, true, "inboxStatus");
+    }
+}
+
+async function showInboxMessage(uid) {
+    try {
+        const data = await adminRequest(`/admin/api/inbox/${encodeURIComponent(uid)}`);
+        document.getElementById("inboxMessageSubject").textContent = data.subject || "(no subject)";
+        const meta = document.getElementById("inboxMessageMeta");
+        meta.replaceChildren();
+        [["From", data.from], ["To", data.to], ["Date", formatDate(data.date)]].forEach(([label, value]) => detail(meta, label, value));
+        document.getElementById("inboxMessageBody").textContent = data.body || "(This message has no readable text body.)";
+        document.getElementById("inboxMessageDialog").showModal();
+    } catch (error) {
+        status(error.message, true, "inboxStatus");
+    }
+}
+
 function detail(parent, label, value) {
     const item = document.createElement("div");
     item.className = "detail-item";
@@ -195,6 +238,7 @@ async function showUser(userId, focusActivity = false) {
             const row = document.createElement("tr");
             addCell(row, formatDate(entry.occurred_at));
             addCell(row, entry.event.replaceAll("_", " "));
+            addCell(row, `${entry.actor_role || "unknown"}${entry.actor_id ? ` · ${entry.actor_id}` : ""}`);
             addCell(row, entry.session_id);
             addCell(row, entry.ip);
             activity.append(row);
@@ -202,7 +246,7 @@ async function showUser(userId, focusActivity = false) {
         if (!data.activity.length) {
             const row = document.createElement("tr");
             const cell = addCell(row, "No activity history.", "empty-state");
-            cell.colSpan = 4;
+            cell.colSpan = 5;
             activity.append(row);
         }
         document.getElementById("userDialog").showModal();
@@ -324,7 +368,7 @@ async function loadLogs() {
     head.replaceChildren();
     body.replaceChildren();
     const production = currentLogType === "production";
-    const columns = production ? ["Time", "Level", "Message", "IP"] : ["Time", "Event", "User ID", "Chat ID", "IP"];
+    const columns = production ? ["Time", "Level", "Message", "IP"] : ["Time", "Event", "Actor", "User ID", "Chat ID", "IP"];
     const header = document.createElement("tr");
     columns.forEach((title) => { const th = document.createElement("th"); th.textContent = title; header.append(th); });
     head.append(header);
@@ -342,6 +386,7 @@ async function loadLogs() {
                 addCell(row, item.ip);
             } else {
                 addCell(row, item.event.replaceAll("_", " "));
+                addCell(row, `${item.actor_role || "unknown"}${item.actor_id ? ` · ${item.actor_id}` : ""}`);
                 addCell(row, item.user_id);
                 addCell(row, item.session_id);
                 addCell(row, item.ip);
@@ -385,6 +430,7 @@ document.addEventListener("click", (event) => {
     if (control.dataset.action === "reset") resetPassword(value);
     if (["block", "unblock", "delete"].includes(control.dataset.action)) changeUserState(value, control.dataset.action);
     if (control.dataset.action === "transcript") openTranscriptKey(value);
+    if (control.dataset.action === "inbox-message") showInboxMessage(value);
 });
 document.querySelectorAll("[data-close]").forEach((button) => button.addEventListener("click", () => document.getElementById(button.dataset.close).close()));
 document.getElementById("periodFilter").addEventListener("change", loadDashboard);
@@ -392,6 +438,7 @@ document.getElementById("searchUsers").addEventListener("click", () => loadUsers
 document.getElementById("userSearch").addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); loadUsers(true); } });
 document.getElementById("loadMoreUsers").addEventListener("click", () => loadUsers(false));
 document.getElementById("chatSearchForm").addEventListener("submit", loadSessions);
+document.getElementById("refreshInbox").addEventListener("click", loadInbox);
 document.getElementById("createUserButton").addEventListener("click", () => document.getElementById("createUserDialog").showModal());
 document.getElementById("createUserForm").addEventListener("submit", createUser);
 document.getElementById("settingsForm").addEventListener("submit", saveSettings);
@@ -410,6 +457,7 @@ document.getElementById("resetDialog").addEventListener("close", () => {
     document.getElementById("temporaryPassword").value = "";
     document.getElementById("resetStatus").textContent = "";
 });
+document.querySelector('[data-panel="inboxPanel"]').addEventListener("click", loadInbox, { once: true });
 
 loadDashboard();
 loadUsers();

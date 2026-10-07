@@ -13,14 +13,20 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from talkative_backend.config import APP_ENV, PUBLIC_SITE_URL, SESSION_SECRET
 from talkative_backend.core.functions import PASSWORD_REQUIREMENTS, age_category, audit, current_user, is_eligible, is_strong_password, parse_dob, public_profile_details, timestamp
+from talkative_backend.emailer import EmailConfigurationError, EmailDeliveryError, send_otp_email
 from talkative_backend.planes import admin_store, user_store
 from talkative_backend.planes import sqlite_chat_store as chat_store
 
 auth_bp = Blueprint("auth", __name__)
 TERMS_VERSION = "2026-10-04"
 logger = logging.getLogger(__name__)
-SIGNUP_OTP_TTL = 600
+SIGNUP_OTP_TTL = 120
 SIGNUP_OTP_MAX_ATTEMPTS = 5
+OTP_SEND_EMAIL_LIMIT = 5
+OTP_SEND_WINDOW_SECONDS = 3600
+OTP_SEND_STRIKE_TTL = 30 * 24 * 3600
+OTP_SEND_LOCK_KEY_PREFIX = f"{chat_store.PREFIX}otp-send-lock"
+OTP_SEND_STRIKE_KEY_PREFIX = f"{chat_store.PREFIX}otp-send-strikes"
 PROFILE_EDUCATION_GROUPS = {
     "School and secondary": (
         "No formal education",
@@ -162,6 +168,8 @@ SIGNUP_OTP_GENERIC_RESPONSE = {
     "message": "Enter the verification code to continue.",
 }
 DEVELOPMENT_SIGNUP_OTP = "123456"
+SIGNUP_OTP_IP_LIMIT = 20
+SIGNUP_OTP_RATE_LIMIT_PREFIX = f"{chat_store.PREFIX}signup-otp-rate-v2"
 
 
 def _email_key(email):
@@ -185,6 +193,10 @@ def _login_otp_digest(challenge_id, code):
     return hmac.new(SESSION_SECRET.encode("utf-8"), f"{challenge_id}:{code}".encode("utf-8"), hashlib.sha256).hexdigest()
 
 
+def _forgot_password_key(email):
+    return f"{chat_store.PREFIX}forgot-password:{_email_key(email)}"
+
+
 def _increment_limiter(key, limit, window):
     client = chat_store.client
     count = client.incr(key)
@@ -195,19 +207,52 @@ def _increment_limiter(key, limit, window):
 
 def _apply_signup_rate_limits(email):
     ip_digest = hashlib.sha256((request.remote_addr or "unknown").encode("utf-8")).hexdigest()
-    email_digest = _email_key(email)
-    if not _increment_limiter(f"{chat_store.PREFIX}signup-otp:ip:{ip_digest}", 10, 3600):
-        return False
-    if not _increment_limiter(f"{chat_store.PREFIX}signup-otp:email:{email_digest}", 3, 3600):
+    if not _increment_limiter(
+        f"{SIGNUP_OTP_RATE_LIMIT_PREFIX}:ip:{ip_digest}", SIGNUP_OTP_IP_LIMIT, 3600
+    ):
         return False
     return True
 
 
-def _send_signup_otp(email, payload=None, limits_checked=False):
-    if APP_ENV != "development":
+def _otp_email_rate_limit(email):
+    email_digest = _email_key(email)
+    lock_key = f"{OTP_SEND_LOCK_KEY_PREFIX}:{email_digest}"
+    active_lock = chat_store.client.get(lock_key)
+    if active_lock:
+        return max(1, int(active_lock) - int(datetime.now(timezone.utc).timestamp()))
+
+    count_key = f"{chat_store.PREFIX}otp-send-count:{email_digest}"
+    count = chat_store.client.incr(count_key)
+    if count == 1:
+        chat_store.client.expire(count_key, OTP_SEND_WINDOW_SECONDS)
+    if count <= OTP_SEND_EMAIL_LIMIT:
+        return 0
+
+    strike_key = f"{OTP_SEND_STRIKE_KEY_PREFIX}:{email_digest}"
+    strikes = chat_store.client.incr(strike_key)
+    if strikes == 1:
+        chat_store.client.expire(strike_key, OTP_SEND_STRIKE_TTL)
+    lock_seconds = 3600 if strikes == 1 else 86400
+    expires_at = int(datetime.now(timezone.utc).timestamp()) + lock_seconds
+    chat_store.client.set(lock_key, str(expires_at), ex=lock_seconds)
+    return lock_seconds
+
+
+def _otp_rate_limited_response(retry_after):
+    hours = max(1, (retry_after + 3599) // 3600)
+    period = "1 hour" if hours == 1 else "1 day"
+    response = jsonify(
+        error=f"Too many verification requests. Try again in {period}.",
+        retry_after=retry_after,
+    )
+    response.status_code = 429
+    response.headers["Retry-After"] = str(retry_after)
+    return response
+
+
+def _send_signup_otp(email, payload=None):
+    if APP_ENV not in {"development", "production"}:
         return jsonify(error="Email verification is not configured for this environment."), 503
-    if not limits_checked and not _apply_signup_rate_limits(email):
-        return jsonify(error="Too many requests. Try again later."), 429
     if user_store.by_email(email):
         return jsonify(error="An account with this email already exists. Log in or use a different email."), 409
 
@@ -215,9 +260,20 @@ def _send_signup_otp(email, payload=None, limits_checked=False):
     state_key = f"{chat_store.PREFIX}signup-otp:{email_digest}"
     cooldown_key = f"{state_key}:cooldown"
     if not chat_store.client.set(cooldown_key, "1", nx=True, ex=60):
-        return jsonify(error="Please wait before requesting another code."), 429
+        response = jsonify(error="Please wait before requesting another code.", retry_after=60)
+        response.status_code = 429
+        response.headers["Retry-After"] = "60"
+        return response, 429
+    if not _apply_signup_rate_limits(email):
+        chat_store.client.delete(cooldown_key)
+        return jsonify(error="Too many verification requests. Try again later."), 429
+    retry_after = _otp_email_rate_limit(email)
+    if retry_after:
+        chat_store.client.delete(cooldown_key)
+        return _otp_rate_limited_response(retry_after), 429
+    code = DEVELOPMENT_SIGNUP_OTP if APP_ENV == "development" else f"{secrets.randbelow(1_000_000):06}"
     state = {
-        "otp_hash": _otp_digest(email, DEVELOPMENT_SIGNUP_OTP),
+        "otp_hash": _otp_digest(email, code),
         "payload": json.dumps(payload or {}),
         "attempts": "0",
     }
@@ -228,6 +284,16 @@ def _send_signup_otp(email, payload=None, limits_checked=False):
         chat_store.client.delete(state_key, cooldown_key)
         logger.exception("Signup verification state could not be stored")
         return jsonify(error="Unable to start verification right now. Try again later."), 503
+    if APP_ENV == "production":
+        try:
+            send_otp_email(email, code, "signup")
+        except (EmailConfigurationError, EmailDeliveryError):
+            try:
+                chat_store.client.delete(state_key, cooldown_key)
+            except sqlite3.Error:
+                logger.exception("Failed to clear signup verification state after email failure")
+            logger.exception("Signup verification email could not be sent")
+            return jsonify(error="Unable to send the verification email right now. Try again later."), 503
     return jsonify(**SIGNUP_OTP_GENERIC_RESPONSE), 200
 
 
@@ -321,8 +387,6 @@ def signup():
     try:
         if user_store.by_email(email):
             return jsonify(error="An account with this email already exists. Log in or use a different email."), 409
-        if not _apply_signup_rate_limits(email):
-            return jsonify(error="Too many requests. Try again later."), 429
     except sqlite3.Error:
         logger.exception("Signup verification request failed")
         return jsonify(error="Unable to start signup verification right now."), 503
@@ -340,18 +404,20 @@ def signup():
         return jsonify(error="Enter a valid date of birth"), 400
     if not is_eligible(dob):
         return jsonify(error="You must be at least 18 years old to create an account."), 403
-    payload = {
-        "email": email,
-        "password_hash": generate_password_hash(password),
-        "first_name": first_name,
-        "last_name": last_name,
-        "dob": dob.isoformat(),
-        "gender": gender,
-        "country_code": country_code,
-        "terms_accepted_at": timestamp(),
-    }
     try:
-        return _send_signup_otp(email, payload, limits_checked=True)
+        result, status = _send_signup_otp(email, {
+            "email": email,
+            "password_hash": generate_password_hash(password),
+            "first_name": first_name,
+            "last_name": last_name,
+            "dob": dob.isoformat(),
+            "gender": gender,
+            "country_code": country_code,
+            "terms_accepted_at": timestamp(),
+        })
+        if status == 200:
+            audit("signup_otp_requested")
+        return result, status
     except sqlite3.Error:
         logger.exception("Signup verification request failed")
         return jsonify(error="Unable to start signup verification right now."), 503
@@ -385,7 +451,10 @@ def resend_signup_otp():
         raw_payload = chat_store.client.hget(state_key, "payload")
         if not raw_payload:
             return jsonify(**SIGNUP_OTP_GENERIC_RESPONSE)
-        return _send_signup_otp(email, json.loads(raw_payload))
+        result, status = _send_signup_otp(email, json.loads(raw_payload))
+        if status == 200:
+            audit("signup_otp_resent")
+        return result, status
     except (sqlite3.Error, TypeError, ValueError):
         logger.exception("Signup verification resend failed")
         return jsonify(error="Unable to resend a verification email right now."), 503
@@ -432,6 +501,7 @@ def verify_signup_email():
     if int(result[0]) != 1:
         return jsonify(error="The verification code is incorrect. Try again."), 400
     if signup_token:
+        audit("signup_email_verified")
         return jsonify(ok=True, signup_token=signup_token)
     return _create_verified_user(payload, payload["username"], admin_created=True)
 
@@ -495,20 +565,28 @@ def login():
     if user["admin_blocked"]:
         audit("login_blocked_account", user["user_id"])
         return jsonify(error="This account has been blocked. Contact support."), 403
-    if APP_ENV != "development":
+    if APP_ENV not in {"development", "production"}:
         return jsonify(error="Login verification is not configured for this environment."), 503
     user_id = user["user_id"]
     ip_digest = hashlib.sha256((request.remote_addr or "unknown").encode("utf-8")).hexdigest()
-    user_digest = _email_key(user_id)
+    cooldown_key = f"{chat_store.PREFIX}login-otp-cooldown:{_email_key(email)}"
     try:
         if not _increment_limiter(f"{chat_store.PREFIX}login-otp:ip:{ip_digest}", 10, 3600):
             return jsonify(error="Too many verification requests. Try again later."), 429
-        if not _increment_limiter(f"{chat_store.PREFIX}login-otp:user:{user_digest}", 5, 3600):
-            return jsonify(error="Too many verification requests. Try again later."), 429
+        if not chat_store.client.set(cooldown_key, "1", nx=True, ex=60):
+            response = jsonify(error="Please wait before requesting another code.", retry_after=60)
+            response.status_code = 429
+            response.headers["Retry-After"] = "60"
+            return response
+        retry_after = _otp_email_rate_limit(email)
+        if retry_after:
+            chat_store.client.delete(cooldown_key)
+            return _otp_rate_limited_response(retry_after)
         challenge_id = secrets.token_urlsafe(32)
+        code = DEVELOPMENT_SIGNUP_OTP if APP_ENV == "development" else f"{secrets.randbelow(1_000_000):06}"
         key = f"{chat_store.PREFIX}login-otp:{_email_key(challenge_id)}"
         chat_store.client.hset(key, mapping={
-            "otp_hash": _login_otp_digest(challenge_id, DEVELOPMENT_SIGNUP_OTP),
+            "otp_hash": _login_otp_digest(challenge_id, code),
             "payload": json.dumps({
                 "user_id": user_id,
                 "password_reset_required": bool(user["password_reset_required"]),
@@ -517,8 +595,22 @@ def login():
         })
         chat_store.client.expire(key, SIGNUP_OTP_TTL)
     except sqlite3.Error:
+        try:
+            chat_store.client.delete(cooldown_key)
+        except sqlite3.Error:
+            logger.exception("Failed to clear login verification cooldown")
         logger.exception("Login verification state could not be stored")
         return jsonify(error="Unable to start login verification right now."), 503
+    if APP_ENV == "production":
+        try:
+            send_otp_email(email, code, "login")
+        except (EmailConfigurationError, EmailDeliveryError):
+            try:
+                chat_store.client.delete(key, cooldown_key)
+            except sqlite3.Error:
+                logger.exception("Failed to clear login verification state after email failure")
+            logger.exception("Login verification email could not be sent")
+            return jsonify(error="Unable to send the verification email right now. Try again later."), 503
     audit("login_otp_requested", user_id)
     return jsonify(
         ok=True,
@@ -526,6 +618,92 @@ def login():
         challenge_id=challenge_id,
         message="Enter the verification code to continue.",
     )
+
+
+@auth_bp.post("/api/auth/forgot-password")
+def forgot_password():
+    email = str((request.get_json(silent=True) or {}).get("email", "")).strip().lower()
+    if len(email) > 254 or not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
+        return jsonify(error="Enter a valid email address"), 400
+    if APP_ENV not in {"development", "production"}:
+        return jsonify(error="Password reset is not configured for this environment."), 503
+
+    ip_digest = hashlib.sha256((request.remote_addr or "unknown").encode("utf-8")).hexdigest()
+    try:
+        if not _increment_limiter(f"{chat_store.PREFIX}forgot-password:ip:{ip_digest}", 10, 3600):
+            return jsonify(error="Too many requests. Try again later."), 429
+        user = user_store.by_email(email)
+        if user:
+            state_key = _forgot_password_key(email)
+            cooldown_key = f"{state_key}:cooldown"
+            if not chat_store.client.set(cooldown_key, "1", nx=True, ex=60):
+                return jsonify(
+                    ok=True,
+                    message="If an account exists for that email, a verification code has been sent.",
+                )
+            retry_after = _otp_email_rate_limit(email)
+            if retry_after:
+                chat_store.client.delete(cooldown_key)
+                return _otp_rate_limited_response(retry_after)
+            code = DEVELOPMENT_SIGNUP_OTP if APP_ENV == "development" else f"{secrets.randbelow(1_000_000):06}"
+            chat_store.client.hset(state_key, mapping={
+                "otp_hash": _otp_digest(email, code),
+                "payload": json.dumps({"user_id": user["user_id"]}),
+                "attempts": "0",
+            })
+            chat_store.client.expire(state_key, SIGNUP_OTP_TTL)
+            if APP_ENV == "production":
+                try:
+                    send_otp_email(email, code, "password reset")
+                except (EmailConfigurationError, EmailDeliveryError):
+                    try:
+                        chat_store.client.delete(state_key, cooldown_key)
+                    except sqlite3.Error:
+                        logger.exception("Failed to clear password-reset state after email failure")
+                    logger.exception("Password-reset verification email could not be sent")
+                    return jsonify(error="Unable to send the verification email right now. Try again later."), 503
+    except sqlite3.Error:
+        logger.exception("Password-reset verification request failed")
+        return jsonify(error="Unable to start password reset right now."), 503
+    audit("password_reset_requested")
+    return jsonify(ok=True, message="If an account exists for that email, a verification code has been sent.")
+
+
+@auth_bp.post("/api/auth/reset-password")
+def reset_password():
+    data = request.get_json(silent=True) or {}
+    email = str(data.get("email", "")).strip().lower()
+    code = str(data.get("code", "")).strip()
+    new_password = str(data.get("new_password", ""))
+    if len(email) > 254 or not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
+        return jsonify(error="Enter a valid email address"), 400
+    if not re.fullmatch(r"\d{6}", code):
+        return jsonify(error="Enter the six-digit verification code."), 400
+    if not is_strong_password(new_password):
+        return jsonify(error=PASSWORD_REQUIREMENTS), 400
+
+    try:
+        result = chat_store.client.verify_challenge(
+            _forgot_password_key(email),
+            _otp_digest(email, code),
+            SIGNUP_OTP_MAX_ATTEMPTS,
+        )
+    except sqlite3.Error:
+        logger.exception("Password-reset verification failed")
+        return jsonify(error="Unable to verify the code right now."), 503
+    if int(result[0]) != 1:
+        return jsonify(error="The code is invalid or expired. Request a new code and try again."), 400
+    try:
+        payload = json.loads(result[1])
+        user = user_store.by_user_id(payload["user_id"])
+        if not user or user["email"].lower() != email:
+            return jsonify(error="The code is invalid or expired. Request a new code and try again."), 400
+        user_store.update_password(user["user_id"], generate_password_hash(new_password))
+        audit("password_reset_completed", user["user_id"])
+    except (sqlite3.Error, TypeError, ValueError, KeyError):
+        logger.exception("Password reset could not be completed")
+        return jsonify(error="Unable to reset your password right now."), 503
+    return jsonify(ok=True, message="Password updated. You can now log in.")
 
 
 @auth_bp.post("/api/auth/verify-login-otp")

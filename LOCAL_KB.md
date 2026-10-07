@@ -9,9 +9,10 @@
 - User data plane: `talkative_backend/planes/user_store.py` -> `users.db` (PII, password hashes, unique usernames/emails, country, private `usr_...` IDs, blocks), file mode 0600.
 - Live chat plane: `talkative_backend/planes/sqlite_chat_store.py` -> SQLite state store (queue, active `dm...` sessions, transient messages and typing).
 - Admin plane: `talkative_backend/planes/admin_store.py` -> `admin.db` (participant IDs, session metadata, ended transcript and audit events); ended records expire after 24h.
+- Admin dashboard includes a read-only support inbox over IMAP; its active-user metric counts unique users in the selected period, separately from users currently online. Audit records identify anonymous, user, or admin actors, and retain events per configured activity-log retention.
 - DB/secret paths: `talkative_backend/config.py`; Docker: `docker-compose.yml` + `Dockerfile`.
 - Compose stores app databases in the persistent Talkative volume. Legacy Redis data is not imported into the SQLite state database.
-- Legacy source DB: `stranger_chat.db`; startup migration copies accounts to user DB when found. Existing legacy IDs are not exposed.
+- Legacy source DB: `stranger_chat.db`; startup migration copies accounts to user DB when found, but hashed email tombstones prevent deleted accounts from being restored. Existing legacy IDs are not exposed.
 
 ## UI Notes
 - Brand banners and 64x64 favicons live in `app/static/logo/`; banner variants follow the in-app theme, while favicon variants follow browser `prefers-color-scheme`.
@@ -26,7 +27,7 @@
 - Only an active chat has an enabled End chat action; it stays disabled through the pre-chat briefing. During matching, Find someone becomes Cancel and the status displays elapsed seconds. Ending an active chat starts the five-second countdown without a confirmation dialog.
 - Chat share exports messages visible in the current scroll viewport as a branded PNG with larger text, peer gender and visible profile details; it uses native file sharing when supported and downloads otherwise.
 - Chat toolbar uses an icon toggle for message sounds, an End chat action, and a three-dot menu for Report/Block; no sound-test action is shown.
-- Signup collects a home country and verifies email ownership by OTP before account creation; email is unique case-insensitively. Phone numbers are not collected.
+- Signup collects a home country and date of birth with a native calendar picker, and verifies email ownership by OTP before account creation; email is unique case-insensitively. Signup, login, and password-reset OTPs expire after 2 minutes. Resending is limited to once per 60 seconds, with up to 5 OTP sends per email per hour; a sixth send triggers a 1-hour lockout, and another limit violation within 30 days triggers a 1-day lockout. Login offers email-OTP password reset. Phone numbers are not collected.
 - Country is required at signup; account/chat views no longer show a “Not provided” country placeholder.
 - Typing-bubble skeleton styles live in `app/static/chat-live.css`; dark-theme overrides and theme logic are in `app/static/theme.css` and `app/templates/index.html`.
 
@@ -50,10 +51,10 @@
 - Install: `.venv/bin/python -m pip install -r requirements.txt`.
 - Local app uses SQLite state at `STATE_DATABASE_PATH` (defaults to `state.db`); use Compose or run `python app.py`.
 - Admin configuration: `ADMIN_USERNAME`, required `ADMIN_PASSWORD`, `SESSION_SECRET` in root `.env`.
-- Local signup and login use development-only fixed OTP `123456`; Compose defaults to `APP_ENV=production`, which disables both until real email delivery is implemented.
+- Local signup and login use development-only fixed OTP `123456`; production sends random OTPs through configured SMTP (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM`). Compose defaults to `APP_ENV=production`.
 - Do not start servers unless the user asks. Focused tests should use temporary SQLite paths.
 
 ## Risks / Gaps
 - Admin password is an environment secret; use a long unique value. Admin login rate limiting and CSRF protection remain to be added before public deployment.
-- User emails are not verified; password recovery is not implemented.
+- User emails are verified by signup OTP; password recovery uses a rate-limited email OTP.
 - Chat state, including active conversations, is held in `STATE_DATABASE_PATH`; persist and back up this file for deployment.

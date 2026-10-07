@@ -19,6 +19,19 @@ STATE_DB = Path(os.getenv("STATE_DATABASE_PATH", BASE_DIR / "state.db"))
 SESSION_SECRET = os.getenv("SESSION_SECRET", "change-me")
 APP_ENV = os.getenv("APP_ENV", "development").strip().lower()
 PUBLIC_SITE_URL = os.getenv("PUBLIC_SITE_URL", "https://talkative.space").strip().rstrip("/")
+SMTP_HOST = os.getenv("SMTP_HOST", "").strip()
+try:
+    SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+except ValueError:
+    SMTP_PORT = 0
+SMTP_USERNAME = os.getenv("SMTP_USERNAME", "").strip()
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+SMTP_FROM = os.getenv("SMTP_FROM", "").strip()
+IMAP_HOST = os.getenv("IMAP_HOST", SMTP_HOST or "mail.aiccloud.in").strip()
+try:
+    IMAP_PORT = int(os.getenv("IMAP_PORT", "993"))
+except ValueError:
+    IMAP_PORT = 0
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "")
 ADMIN_TRANSCRIPT_KEY = os.getenv("ADMIN_TRANSCRIPT_KEY", "")

@@ -6,7 +6,17 @@
 <meta name="csrf-token" content="{{ csrf_token }}">
 <meta name="robots" content="noindex,nofollow">
 <title>Talkative Admin</title>
+{% if authorized %}
 <link rel="stylesheet" href="/static/admin.css">
+{% else %}
+<link rel="icon" type="image/png" sizes="64x64" href="/static/logo/Talkative_Favicon_Black_Transparent_64x64.png" media="(prefers-color-scheme: light)">
+<link rel="icon" type="image/png" sizes="64x64" href="/static/logo/Talkative_Favicon_White_Transparent_64x64.png" media="(prefers-color-scheme: dark)">
+<script>try{if(localStorage.getItem("talkative-theme")==="dark")document.documentElement.dataset.theme="dark"}catch{}</script>
+<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/auth-success.css">
+<link rel="stylesheet" href="/static/account.css">
+<link rel="stylesheet" href="/static/theme.css">
+{% endif %}
 </head>
 <body>
 {% if authorized %}
@@ -21,13 +31,14 @@
 <button class="admin-tab selected" type="button" role="tab" aria-selected="true" data-panel="dashboardPanel">Dashboard</button>
 <button class="admin-tab" type="button" role="tab" aria-selected="false" data-panel="usersPanel">Users</button>
 <button class="admin-tab" type="button" role="tab" aria-selected="false" data-panel="chatsPanel">Chat records</button>
+<button class="admin-tab" type="button" role="tab" aria-selected="false" data-panel="inboxPanel">Support inbox</button>
 <button class="admin-tab" type="button" role="tab" aria-selected="false" data-panel="settingsPanel">Settings</button>
 <button class="admin-tab" type="button" role="tab" aria-selected="false" data-panel="logsPanel">Logs</button>
 </nav>
 <section id="dashboardPanel" class="admin-panel" role="tabpanel">
 <div class="panel-toolbar"><div><h2>Service overview</h2><p>Activity ranges use UTC. Company cost is the configured production cost per day.</p></div><label class="period-picker">Period<select id="periodFilter"><option value="day">Day</option><option value="week">Week</option><option value="month">Month</option><option value="year">Year</option></select></label></div>
 <div class="metric-grid">
-<article class="metric"><span>Active users</span><strong id="metricActive">--</strong><small><b id="metricOnline">--</b> online now</small></article>
+<article class="metric"><span>Active users in period</span><strong id="metricActive">--</strong><small><b id="metricOnline">--</b> online now</small></article>
 <article class="metric"><span>Total users</span><strong id="metricTotal">--</strong><small><b id="metricNew">--</b> new in period</small></article>
 <article class="metric metric-alert"><span>Incidents</span><strong id="metricIncidents">--</strong><small>Blocked messages, user blocks, connection loss</small></article>
 <article class="metric"><span>Reports</span><strong id="metricReports">--</strong><small>Reports in selected period</small></article>
@@ -46,6 +57,11 @@
 <form id="chatSearchForm" class="filter-row"><label>Chat ID or user ID<input id="chatQuery" type="search"></label><label>IP address<input id="chatIp" type="search"></label><label>From<input id="chatStart" type="datetime-local"></label><label>To<input id="chatEnd" type="datetime-local"></label><button type="submit">Search</button></form>
 <div class="table-wrap"><table><thead><tr><th>Chat ID</th><th>Participant 1</th><th>Participant 2</th><th>Started</th><th>Ended</th><th>Duration</th><th></th></tr></thead><tbody id="sessionsTable"></tbody></table></div>
 </section>
+<section id="inboxPanel" class="admin-panel hidden" role="tabpanel">
+<div class="panel-toolbar"><div><h2>Support inbox</h2><p>Read-only view of recent mailbox messages. Message contents are not stored in the app database.</p></div><button id="refreshInbox" class="quiet-button" type="button">Refresh inbox</button></div>
+<p id="inboxStatus" class="admin-status" role="status" aria-live="polite"></p>
+<div class="table-wrap"><table><thead><tr><th>Date</th><th>From</th><th>Subject</th><th>Status</th><th></th></tr></thead><tbody id="inboxTable"></tbody></table></div>
+</section>
 <section id="settingsPanel" class="admin-panel hidden" role="tabpanel">
 <div class="panel-toolbar"><div><h2>Settings</h2><p>These application settings are stored in the admin database. Secret environment variables remain in the server’s `.env` file.</p></div></div>
 <form id="settingsForm" class="settings-form">
@@ -58,20 +74,38 @@
 </section>
 <section id="logsPanel" class="admin-panel hidden" role="tabpanel">
 <div class="log-tabs" role="tablist" aria-label="Log type"><button class="log-tab selected" type="button" aria-selected="true" data-log="activity">Activity logs</button><button class="log-tab" type="button" aria-selected="false" data-log="production">Production logs</button></div>
-<div class="toolbar-row"><input id="logSearch" type="search" placeholder="Filter by event, user, chat, or IP"><select id="logLevel"><option value="">All levels</option><option value="INFO">Info</option><option value="WARNING">Warning</option><option value="ERROR">Error</option></select><button id="searchLogs" class="quiet-button" type="button">Search</button></div>
+<div class="toolbar-row"><input id="logSearch" type="search" placeholder="Filter by event, actor, user, chat, or IP"><select id="logLevel"><option value="">All levels</option><option value="INFO">Info</option><option value="WARNING">Warning</option><option value="ERROR">Error</option></select><button id="searchLogs" class="quiet-button" type="button">Search</button></div>
 <div class="table-wrap"><table><thead id="logsHead"></thead><tbody id="logsTable"></tbody></table></div>
 </section>
 </main>
 <dialog id="createUserDialog" class="admin-dialog"><form id="createUserForm"><div class="dialog-heading"><h2>Create user</h2><button class="icon-close" type="button" data-close="createUserDialog" aria-label="Close">×</button></div><div class="form-grid"><label>First name<input name="first_name" maxlength="60" required></label><label>Last name<input name="last_name" maxlength="60" required></label><label>Username<input name="username" minlength="3" maxlength="24" pattern="[A-Za-z0-9][A-Za-z0-9_.-]{2,23}" required></label><label>Email<input name="email" type="email" maxlength="254" required></label><label>Date of birth<input name="date_of_birth" type="date" required></label><label>Gender<select name="gender"><option value="prefer_not_to_say">Prefer not to say</option><option value="female">Female</option><option value="male">Male</option><option value="non_binary">Non-binary</option></select></label><label>Country code<input name="country_code" minlength="2" maxlength="2" placeholder="IN" required></label></div><button type="submit">Create account</button><p id="createUserStatus" class="form-status" role="status"></p></form></dialog>
-<dialog id="userDialog" class="admin-dialog wide-dialog"><div class="dialog-heading"><h2>User details and activity</h2><button class="icon-close" type="button" data-close="userDialog" aria-label="Close">×</button></div><dl id="userDetails" class="detail-grid"></dl><h3>Activity history</h3><div class="table-wrap"><table><thead><tr><th>Time</th><th>Event</th><th>Chat ID</th><th>IP</th></tr></thead><tbody id="userActivity"></tbody></table></div></dialog>
+<dialog id="userDialog" class="admin-dialog wide-dialog"><div class="dialog-heading"><h2>User details and activity</h2><button class="icon-close" type="button" data-close="userDialog" aria-label="Close">×</button></div><dl id="userDetails" class="detail-grid"></dl><h3>Activity history</h3><div class="table-wrap"><table><thead><tr><th>Time</th><th>Event</th><th>Actor</th><th>Chat ID</th><th>IP</th></tr></thead><tbody id="userActivity"></tbody></table></div></dialog>
+<dialog id="inboxMessageDialog" class="admin-dialog wide-dialog"><div class="dialog-heading"><h2 id="inboxMessageSubject">Support message</h2><button class="icon-close" type="button" data-close="inboxMessageDialog" aria-label="Close">×</button></div><dl id="inboxMessageMeta" class="detail-grid"></dl><pre id="inboxMessageBody" class="inbox-message-body"></pre></dialog>
 <dialog id="resetDialog" class="admin-dialog"><div class="dialog-heading"><h2>Temporary password</h2><button class="icon-close" type="button" data-close="resetDialog" aria-label="Close">×</button></div><p>It is shown once. The user must change it on next sign-in.</p><label>Temporary password<input id="temporaryPassword" readonly></label><button id="copyTemporaryPassword" type="button">Copy</button><p id="resetStatus" class="form-status" role="status"></p></dialog>
 <dialog id="transcriptKeyDialog" class="admin-dialog"><form id="transcriptKeyForm"><div class="dialog-heading"><h2>Verify transcript access</h2><button class="icon-close" type="button" data-close="transcriptKeyDialog" aria-label="Close">×</button></div><label>Transcript key<input id="transcriptKey" type="password" autocomplete="off" required></label><button type="submit">View chat</button><p id="transcriptError" class="error-text" role="status"></p></form></dialog>
 <dialog id="transcriptDialog" class="admin-dialog wide-dialog"><div class="dialog-heading"><h2>Chat activity</h2><button class="icon-close" type="button" data-close="transcriptDialog" aria-label="Close">×</button></div><dl id="transcriptMeta" class="detail-grid"></dl><h3>Activity</h3><ol id="transcriptActivities" class="activity-list"></ol><h3>Transcript</h3><ol id="transcriptMessages" class="transcript-list"></ol></dialog>
 <script src="/static/admin.js" defer></script>
 {% elif not configured %}
-<main class="signin-shell"><a class="brand" href="/">Talkative <span>ADMIN</span></a><section class="signin-panel"><h1>Admin access is not configured</h1><p>Set ADMIN_PASSWORD in the server environment.</p></section></main>
+<main>
+<div class="shared-site-header">{% include "_header.html" %}</div>
+<section class="card" id="login"><p class="signup-step">OPERATIONS</p><h1>Admin access is not configured</h1><p>Set ADMIN_PASSWORD in the server environment.</p></section>
+</main>
 {% else %}
-<main class="signin-shell"><a class="brand" href="/">Talkative <span>ADMIN</span></a><section class="signin-panel"><p class="eyebrow">OPERATIONS</p><h1>Admin sign in</h1><form method="post" action="/admin/login"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><label>Username<input name="username" autocomplete="username" required></label><label>Password<input name="password" type="password" autocomplete="current-password" required></label><button type="submit">Sign in</button><p class="error-text">{{ error or "" }}</p></form></section></main>
+<main>
+<div class="shared-site-header">{% include "_header.html" %}</div>
+<section class="card" id="login">
+<p class="signup-step">OPERATIONS</p>
+<h1>Admin sign in</h1>
+<form class="auth-form" method="post" action="/admin/login">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<label>Username<input name="username" autocomplete="username" required></label>
+<label>Password<input name="password" type="password" autocomplete="current-password" required></label>
+<button type="submit">Sign in</button>
+<p class="auth-error" role="status">{{ error or "" }}</p>
+</form>
+</section>
+</main>
+<script src="/static/legal-pages.js"></script>
 {% endif %}
 </body>
 </html>

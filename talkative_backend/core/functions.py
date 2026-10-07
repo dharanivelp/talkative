@@ -21,7 +21,11 @@ def is_strong_password(password):
 
 
 def parse_dob(value):
-    return date.fromisoformat(str(value))
+    value = str(value).strip()
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        return datetime.strptime(value, "%d/%m/%Y").date()
 
 
 def is_eligible(dob):
@@ -69,7 +73,19 @@ def admin_authorized():
 
 
 def audit(event, user_id=None, session_id=None):
-    admin_store.record_event(event, user_id, session_id, request.remote_addr if has_request_context() else "")
+    actor_role = "anonymous"
+    actor_id = ""
+    if has_request_context():
+        actor_role = session.get("role", "anonymous")
+        actor_id = session.get("admin_username", "") if actor_role == "admin" else session.get("user_id", "")
+    admin_store.record_event(
+        event,
+        user_id,
+        session_id,
+        request.remote_addr if has_request_context() else "",
+        actor_role,
+        actor_id,
+    )
 
 
 def message_flags(text):

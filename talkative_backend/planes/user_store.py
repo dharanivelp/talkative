@@ -1,3 +1,4 @@
+import hashlib
 import os
 import re
 import sqlite3
@@ -123,6 +124,7 @@ def init():
         db.execute("CREATE UNIQUE INDEX IF NOT EXISTS users_username_unique ON users(username COLLATE NOCASE)")
         db.execute("CREATE TABLE IF NOT EXISTS blocks(user_id TEXT NOT NULL,blocked_user_id TEXT NOT NULL,created_at TEXT NOT NULL,PRIMARY KEY(user_id,blocked_user_id))")
         db.execute("CREATE TABLE IF NOT EXISTS legacy_user_map(legacy_id INTEGER PRIMARY KEY,user_id TEXT NOT NULL UNIQUE)")
+        db.execute("CREATE TABLE IF NOT EXISTS deleted_user_emails(email_hash TEXT PRIMARY KEY)")
     migrate_legacy_users()
 
 
@@ -141,7 +143,12 @@ def migrate_legacy_users():
     with database() as db:
         for old in old_users:
             email = (old["email"] or "").strip().lower()
-            if not email or db.execute("SELECT 1 FROM users WHERE email=?", (email,)).fetchone():
+            if not email:
+                continue
+            email_hash = hashlib.sha256(email.encode("utf-8")).hexdigest()
+            if db.execute("SELECT 1 FROM deleted_user_emails WHERE email_hash=?", (email_hash,)).fetchone():
+                continue
+            if db.execute("SELECT 1 FROM users WHERE email=?", (email,)).fetchone():
                 continue
             birth_year = old["birth_year"] if "birth_year" in columns else None
             dob = f"{birth_year:04d}-01-01" if birth_year else "1900-01-01"
@@ -308,6 +315,11 @@ def block_pair(user_id, blocked_user_id, created_at):
 
 def delete_user(user_id):
     with database() as db:
+        user = db.execute("SELECT email FROM users WHERE user_id=?", (user_id,)).fetchone()
+        if not user:
+            return 0
+        email_hash = hashlib.sha256(user["email"].strip().lower().encode("utf-8")).hexdigest()
+        db.execute("INSERT OR IGNORE INTO deleted_user_emails(email_hash) VALUES(?)", (email_hash,))
         db.execute("DELETE FROM blocks WHERE user_id=? OR blocked_user_id=?", (user_id, user_id))
         db.execute("DELETE FROM legacy_user_map WHERE user_id=?", (user_id,))
         return db.execute("DELETE FROM users WHERE user_id=?", (user_id,)).rowcount

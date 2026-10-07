@@ -12,6 +12,13 @@ from werkzeug.security import generate_password_hash
 from talkative_backend.backend.auth import _send_signup_otp, close_user_activity
 from talkative_backend.config import ADMIN_PASSWORD, ADMIN_TRANSCRIPT_KEY, ADMIN_USERNAME, ACTIVITY_LOG_RETENTION_DAYS, COMPANY_COST_CURRENCY, COMPANY_COST_PER_DAY
 from talkative_backend.core.functions import admin_authorized, audit, is_eligible, parse_dob, timestamp
+from talkative_backend.email_inbox import (
+    InboxConfigurationError,
+    InboxUnavailableError,
+    MessageTooLargeError,
+    list_messages,
+    read_message,
+)
 from talkative_backend.planes import admin_store, user_store
 from talkative_backend.planes import sqlite_chat_store as chat_store
 
@@ -294,6 +301,44 @@ def production_logs():
     if denied():
         return denied()
     return jsonify(logs=admin_store.production_logs(request.args.get("q", ""), request.args.get("level", "")))
+
+
+@admin_bp.get("/admin/api/inbox")
+def inbox():
+    if denied():
+        return denied()
+    try:
+        result = list_messages()
+    except InboxConfigurationError:
+        return jsonify(error="Support mailbox is not configured."), 503
+    except InboxUnavailableError:
+        admin_store.log_event("ERROR", "Support mailbox inbox could not be loaded", request.remote_addr or "")
+        return jsonify(error="Unable to load the support inbox right now."), 503
+    audit("admin_inbox_listed")
+    response = jsonify(result)
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+@admin_bp.get("/admin/api/inbox/<string:uid>")
+def inbox_message(uid):
+    if denied():
+        return denied()
+    try:
+        result = read_message(uid)
+    except ValueError:
+        return jsonify(error="invalid inbox message ID"), 400
+    except MessageTooLargeError as error:
+        return jsonify(error=str(error)), 413
+    except InboxConfigurationError:
+        return jsonify(error="Support mailbox is not configured."), 503
+    except InboxUnavailableError:
+        admin_store.log_event("ERROR", "Support mailbox message could not be read", request.remote_addr or "")
+        return jsonify(error="Unable to read this inbox message right now."), 503
+    audit("admin_inbox_message_viewed")
+    response = jsonify(result)
+    response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 @admin_bp.get("/admin/api/settings")
