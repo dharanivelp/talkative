@@ -16,6 +16,7 @@ class SeoTests(unittest.TestCase):
         self.assertIn(b'<meta name="description"', response.data)
         self.assertIn(b'<link rel="canonical" href="https://talkative.space/">', response.data)
         self.assertIn(b'<meta property="og:title"', response.data)
+        self.assertIn(b'<meta property="og:url" content="https://talkative.space/?share=3">', response.data)
         self.assertIn(b'https://talkative.space/static/social-preview-v3.png', response.data)
         self.assertIn(b'<meta name="twitter:image:alt" content="Talkative logo with the tagline Connect with Earthmates">', response.data)
         self.assertIn(b"Meet people through conversations", response.data)
