@@ -11,14 +11,14 @@ import pycountry
 from flask import Blueprint, Response, jsonify, redirect, render_template, request, session
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from talkative_backend.config import APP_ENV, DEMO_ONLINE_COUNT_ENABLED, PUBLIC_SITE_URL, SESSION_SECRET
+from talkative_backend.config import APP_ENV, DEMO_ONLINE_COUNT_ENABLED, GLOBAL_CHAT_SIMULATION_ENABLED, PUBLIC_SITE_URL, SESSION_SECRET
 from talkative_backend.core.functions import PASSWORD_REQUIREMENTS, age_category, audit, current_user, is_eligible, is_strong_password, parse_dob, public_profile_details, timestamp
 from talkative_backend.emailer import EmailConfigurationError, EmailDeliveryError, send_otp_email
 from talkative_backend.planes import admin_store, user_store
 from talkative_backend.planes import sqlite_chat_store as chat_store
 
 auth_bp = Blueprint("auth", __name__)
-TERMS_VERSION = "2026-10-04"
+TERMS_VERSION = "2026-10-11"
 logger = logging.getLogger(__name__)
 _last_demo_online_count = None
 SIGNUP_OTP_TTL = 120
@@ -317,7 +317,11 @@ def close_user_activity(user_id):
 def home():
     countries = [{"code": country.alpha_2, "name": country.name} for country in pycountry.countries]
     countries.sort(key=lambda country: country["name"])
-    return render_template("index.html", countries=countries)
+    return render_template(
+        "index.html",
+        countries=countries,
+        global_chat_simulation_enabled=GLOBAL_CHAT_SIMULATION_ENABLED,
+    )
 
 
 @auth_bp.get("/account")
@@ -330,6 +334,11 @@ def account_page():
 @auth_bp.get("/terms")
 def terms_page():
     return render_template("terms.html")
+
+
+@auth_bp.get("/about")
+def about_page():
+    return render_template("about.html")
 
 
 @auth_bp.get("/privacy")
@@ -358,6 +367,7 @@ def sitemap_xml():
         '<?xml version="1.0" encoding="UTF-8"?>'
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
         f"<url><loc>{PUBLIC_SITE_URL}/</loc></url>"
+        f"<url><loc>{PUBLIC_SITE_URL}/about</loc></url>"
         f"<url><loc>{PUBLIC_SITE_URL}/terms</loc></url>"
         f"<url><loc>{PUBLIC_SITE_URL}/privacy</loc></url>"
         "</urlset>"

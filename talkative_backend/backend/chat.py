@@ -1,13 +1,28 @@
 import time
+from datetime import datetime, timezone
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, session
 import pycountry
 
 from talkative_backend.core.functions import age_category, audit, current_user, is_eligible, message_flags, parse_dob, public_profile_details, timestamp
+from talkative_backend.config import GLOBAL_CHAT_SIMULATION_ENABLED
 from talkative_backend.planes import admin_store, user_store
 from talkative_backend.planes import sqlite_chat_store as chat_store
 
 chat_bp = Blueprint("chat", __name__)
+GLOBAL_CHAT_SIMULATION_EPOCH = 1_767_225_600
+GLOBAL_CHAT_SIMULATION_INTERVAL = 6
+GLOBAL_CHAT_SIMULATION_HISTORY = 50
+GLOBAL_CHAT_SIMULATION_MESSAGES = (
+    ("Aarav Sharma", "Anyone following the cricket matches this week? The last few overs have been so tense."),
+    ("Ananya Iyer", "I watched a new Tamil film this weekend. Any recommendations for what to watch next?"),
+    ("Karthik R.", "Tried one of those AI tools to plan a trip. It made a surprisingly useful itinerary."),
+    ("Nila S.", "Chennai weather is finally good for an evening walk. What are your favorite spots?"),
+    ("Vignesh Kumar", "The cricket highlights are all over my feed today. Which team are you cheering for?"),
+    ("Meena Lakshmi", "I found a lovely little filter coffee place nearby. Always happy to discover local cafes."),
+    ("Arjun P.", "Has anyone tried using AI to learn a new language? Curious how helpful it is."),
+    ("Kavya Subramanian", "Looking for a new Tamil playlist for my commute. Share your favorites!"),
+)
 
 
 def _peer_view(peer):
@@ -23,6 +38,106 @@ def _peer_view(peer):
     }
     view.update(public_profile_details(peer))
     return view
+
+
+@chat_bp.get("/api/global-chat/simulation")
+def global_chat_simulation_messages():
+    if not GLOBAL_CHAT_SIMULATION_ENABLED:
+        return jsonify(error="Global chat simulation is disabled."), 404
+
+    after = request.args.get("after")
+    if after is not None:
+        try:
+            after = max(0, int(after))
+        except ValueError:
+            return jsonify(error="invalid message cursor"), 400
+
+    current_slot = max(0, int((time.time() - GLOBAL_CHAT_SIMULATION_EPOCH) // GLOBAL_CHAT_SIMULATION_INTERVAL))
+    cursor = max(current_slot, after or 0)
+    first_slot = (current_slot // GLOBAL_CHAT_SIMULATION_HISTORY) * GLOBAL_CHAT_SIMULATION_HISTORY + 1
+    reset = after is not None and after < first_slot
+    if after is not None and not reset:
+        first_slot = max(first_slot, after + 1)
+
+    messages = []
+    for slot in range(first_slot, current_slot + 1):
+        name, text = GLOBAL_CHAT_SIMULATION_MESSAGES[(slot * 7 + slot // len(GLOBAL_CHAT_SIMULATION_MESSAGES)) % len(GLOBAL_CHAT_SIMULATION_MESSAGES)]
+        messages.append({
+            "id": slot,
+            "name": name,
+            "text": text,
+            "created_at": datetime.fromtimestamp(
+                GLOBAL_CHAT_SIMULATION_EPOCH + slot * GLOBAL_CHAT_SIMULATION_INTERVAL,
+                timezone.utc,
+            ).isoformat(),
+            "mine": False,
+            "simulated": True,
+        })
+
+    return jsonify(messages=messages, cursor=cursor, reset=reset)
+
+
+@chat_bp.get("/api/global-chat")
+def global_chat_messages():
+    user = current_user()
+    after = request.args.get("after")
+    if after is not None:
+        try:
+            after = max(0, int(after))
+        except ValueError:
+            return jsonify(error="invalid message cursor"), 400
+
+    preview_remaining = None
+    if not user:
+        started_at = session.get("global_chat_preview_started_at")
+        if not isinstance(started_at, (int, float)):
+            started_at = time.time()
+            session["global_chat_preview_started_at"] = started_at
+        preview_remaining = max(0, int(started_at + 120 - time.time() + 0.999))
+        if preview_remaining == 0:
+            return jsonify(
+                messages=[],
+                authenticated=False,
+                preview_expired=True,
+                preview_remaining=0,
+            )
+
+    messages = chat_store.global_chat_messages(after)
+    for message in messages:
+        sender_user_id = message.pop("sender_user_id", None)
+        message["mine"] = bool(user and sender_user_id == user["user_id"])
+
+    return jsonify(
+        messages=messages,
+        authenticated=bool(user),
+        preview_expired=False,
+        preview_remaining=preview_remaining,
+    )
+
+
+@chat_bp.post("/api/global-chat")
+def send_global_chat_message():
+    user = current_user()
+    if not user:
+        return jsonify(error="Please log in to send a global chat message."), 401
+    data = request.get_json(silent=True) or {}
+    text = data.get("text")
+    if not isinstance(text, str):
+        return jsonify(error="message must be 1-128 characters"), 400
+    text = text.strip()
+    if not text or len(text) > 128:
+        return jsonify(error="message must be 1-128 characters"), 400
+    flags = message_flags(text)
+    if flags:
+        audit("global_chat_message_blocked", user["user_id"])
+        return jsonify(blocked=True, flags=flags), 400
+    message_id = chat_store.add_global_chat_message(
+        user["user_id"], user["first_name"], text, timestamp()
+    )
+    if message_id is None:
+        return jsonify(error="Please wait a moment before sending another message."), 429
+    audit("global_chat_message_sent", user["user_id"])
+    return jsonify(ok=True, id=message_id)
 
 
 @chat_bp.post("/api/match")
@@ -64,6 +179,121 @@ def active_chat():
     if not peer:
         return jsonify(active=False)
     return jsonify(active=True, conversation_id=session_id, peer=_peer_view(peer))
+
+
+@chat_bp.post("/api/stay-in-touch/<string:session_id>")
+def stay_in_touch(session_id):
+    user = current_user()
+    if not user:
+        return jsonify(error="login required"), 401
+    action = (request.get_json(silent=True) or {}).get("action", "accept")
+    if action == "accept":
+        consent = chat_store.agree_stay_in_touch(session_id, user["user_id"])
+    elif action == "decline":
+        consent = chat_store.decline_stay_in_touch(session_id, user["user_id"])
+    else:
+        return jsonify(error="invalid stay-in-touch response"), 400
+    if not consent:
+        return jsonify(error="no active request to stay in touch"), 404
+
+    result = consent["result"]
+    if result != "declined" and consent["by_me"] and consent["by_peer"]:
+        result, _ = user_store.add_contact_pair(
+            consent["user_a"], consent["user_b"], timestamp()
+        )
+        chat_store.set_stay_in_touch_result(session_id, result)
+        if result == "connected":
+            audit("contacts_mutually_added", user["user_id"], session_id)
+
+    return jsonify(
+        agreed_by_me=consent["by_me"],
+        agreed_by_peer=consent["by_peer"],
+        result=result,
+    )
+
+
+@chat_bp.get("/api/contacts")
+def contacts():
+    user = current_user()
+    if not user:
+        return jsonify(error="login required"), 401
+    items = user_store.list_contacts(user["user_id"])
+    for contact in items:
+        peer_id = contact.pop("peer_user_id")
+        peer = user_store.by_user_id(peer_id)
+        contact["peer"] = _peer_view(peer) if peer else None
+        if contact["peer"]:
+            contact["peer"]["online"] = chat_store.is_online(peer_id)
+            contact["peer"]["last_seen"] = chat_store.last_seen(peer_id)
+    return jsonify(contacts=items, limit=user_store.CONTACT_LIMIT)
+
+
+@chat_bp.delete("/api/contacts/<string:conversation_id>")
+def remove_contact(conversation_id):
+    user = current_user()
+    if not user:
+        return jsonify(error="login required"), 401
+    if not user_store.remove_contact(user["user_id"], conversation_id):
+        return jsonify(error="contact not found"), 404
+    audit("contact_removed")
+    return jsonify(ok=True)
+
+
+@chat_bp.get("/api/contact-messages/<string:conversation_id>")
+def get_contact_messages(conversation_id):
+    user = current_user()
+    if not user:
+        return jsonify(error="login required"), 401
+    raw_after = request.args.get("after")
+    try:
+        after = max(0, int(raw_after)) if raw_after is not None else None
+    except ValueError:
+        return jsonify(error="invalid message cursor"), 400
+    messages = user_store.contact_message_history(user["user_id"], conversation_id, after)
+    if messages is None:
+        return jsonify(error="contact not found"), 404
+    peer_id = user_store.contact_peer(user["user_id"], conversation_id)
+    return jsonify(
+        messages=messages,
+        typing=chat_store.contact_peer_typing(conversation_id, peer_id),
+        peer_presence={
+            "online": chat_store.is_online(peer_id),
+            "last_seen": chat_store.last_seen(peer_id),
+        },
+    )
+
+
+@chat_bp.post("/api/contact-typing/<string:conversation_id>")
+def contact_typing(conversation_id):
+    user = current_user()
+    if not user:
+        return jsonify(error="login required"), 401
+    if user_store.contact_peer(user["user_id"], conversation_id) is None:
+        return jsonify(error="contact not found"), 404
+    chat_store.set_contact_typing(conversation_id, user["user_id"])
+    return jsonify(ok=True)
+
+
+@chat_bp.post("/api/contact-messages/<string:conversation_id>")
+def send_contact_message(conversation_id):
+    user = current_user()
+    if not user:
+        return jsonify(error="login required"), 401
+    text = str((request.get_json(silent=True) or {}).get("text", "")).strip()
+    if not text or len(text) > 128:
+        return jsonify(error="message must be 1-128 characters"), 400
+    if user_store.contact_peer(user["user_id"], conversation_id) is None:
+        return jsonify(error="contact not found"), 404
+    flags = message_flags(text)
+    if flags:
+        audit("contact_message_blocked", user["user_id"])
+        return jsonify(blocked=True, flags=flags), 400
+    if not user_store.add_contact_message(
+        user["user_id"], conversation_id, text, timestamp()
+    ):
+        return jsonify(error="contact not found"), 404
+    audit("contact_message_sent", user["user_id"])
+    return jsonify(ok=True)
 
 
 @chat_bp.get("/api/messages/<string:session_id>")

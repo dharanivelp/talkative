@@ -21,6 +21,9 @@ APP_ENV = os.getenv("APP_ENV", "development").strip().lower()
 DEMO_ONLINE_COUNT_ENABLED = os.getenv("DEMO_ONLINE_COUNT_ENABLED", "false").strip().lower() in {
     "1", "true", "yes", "on",
 }
+GLOBAL_CHAT_SIMULATION_ENABLED = os.getenv("GLOBAL_CHAT_SIMULATION_ENABLED", "false").strip().lower() in {
+    "1", "true", "yes", "on",
+}
 PUBLIC_SITE_URL = os.getenv("PUBLIC_SITE_URL", "https://talkative.space").strip().rstrip("/")
 SMTP_HOST = os.getenv("SMTP_HOST", "").strip()
 try:

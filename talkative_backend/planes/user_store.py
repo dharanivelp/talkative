@@ -10,6 +10,8 @@ from werkzeug.security import generate_password_hash
 
 from talkative_backend.config import LEGACY_DB, USER_DB
 
+CONTACT_LIMIT = 10
+
 
 def connect():
     USER_DB.parent.mkdir(parents=True, exist_ok=True)
@@ -123,6 +125,24 @@ def init():
             db.execute("UPDATE users SET first_name=?,last_name=? WHERE id=?", (parts[0] if parts else "", parts[1] if len(parts) > 1 else "", row["id"]))
         db.execute("CREATE UNIQUE INDEX IF NOT EXISTS users_username_unique ON users(username COLLATE NOCASE)")
         db.execute("CREATE TABLE IF NOT EXISTS blocks(user_id TEXT NOT NULL,blocked_user_id TEXT NOT NULL,created_at TEXT NOT NULL,PRIMARY KEY(user_id,blocked_user_id))")
+        db.execute("""CREATE TABLE IF NOT EXISTS contacts(
+            user_id TEXT NOT NULL,
+            peer_user_id TEXT NOT NULL,
+            conversation_id TEXT NOT NULL,
+            connected_at TEXT NOT NULL,
+            PRIMARY KEY(user_id,peer_user_id),
+            UNIQUE(user_id,conversation_id),
+            CHECK(user_id<>peer_user_id)
+        )""")
+        db.execute("CREATE INDEX IF NOT EXISTS contacts_conversation ON contacts(conversation_id,user_id,peer_user_id)")
+        db.execute("""CREATE TABLE IF NOT EXISTS contact_messages(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            conversation_id TEXT NOT NULL,
+            sender_user_id TEXT NOT NULL,
+            text TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )""")
+        db.execute("CREATE INDEX IF NOT EXISTS contact_messages_history ON contact_messages(conversation_id,id)")
         db.execute("CREATE TABLE IF NOT EXISTS legacy_user_map(legacy_id INTEGER PRIMARY KEY,user_id TEXT NOT NULL UNIQUE)")
         db.execute("CREATE TABLE IF NOT EXISTS deleted_user_emails(email_hash TEXT PRIMARY KEY)")
     migrate_legacy_users()
@@ -311,6 +331,195 @@ def are_blocked(first_id, second_id):
 def block_pair(user_id, blocked_user_id, created_at):
     with database() as db:
         db.execute("INSERT OR IGNORE INTO blocks(user_id,blocked_user_id,created_at) VALUES(?,?,?)", (user_id, blocked_user_id, created_at))
+        conversations = db.execute(
+            "SELECT conversation_id FROM contacts WHERE "
+            "(user_id=? AND peer_user_id=?) OR (user_id=? AND peer_user_id=?)",
+            (user_id, blocked_user_id, blocked_user_id, user_id),
+        ).fetchall()
+        db.execute("DELETE FROM contacts WHERE (user_id=? AND peer_user_id=?) OR (user_id=? AND peer_user_id=?)",
+                   (user_id, blocked_user_id, blocked_user_id, user_id))
+        db.executemany(
+            "DELETE FROM contact_messages WHERE conversation_id=?",
+            ((row["conversation_id"],) for row in conversations),
+        )
+
+
+def add_contact_pair(first_id, second_id, connected_at):
+    if first_id == second_id:
+        return "unavailable", None
+    with database() as db:
+        db.execute("BEGIN IMMEDIATE")
+        users = db.execute(
+            "SELECT COUNT(*) FROM users WHERE user_id IN (?,?)", (first_id, second_id)
+        ).fetchone()[0]
+        if users != 2:
+            return "unavailable", None
+        if db.execute(
+            "SELECT 1 FROM blocks WHERE (user_id=? AND blocked_user_id=?) "
+            "OR (user_id=? AND blocked_user_id=?)",
+            (first_id, second_id, second_id, first_id),
+        ).fetchone():
+            return "blocked", None
+
+        existing_rows = db.execute(
+            "SELECT user_id,conversation_id FROM contacts WHERE "
+            "(user_id=? AND peer_user_id=?) OR (user_id=? AND peer_user_id=?)",
+            (first_id, second_id, second_id, first_id),
+        ).fetchall()
+        conversation_id = existing_rows[0]["conversation_id"] if existing_rows else "ct_" + uuid.uuid4().hex
+        if len(existing_rows) == 2 and len({row["conversation_id"] for row in existing_rows}) == 1:
+            return "connected", conversation_id
+
+        counts = {
+            user_id: db.execute(
+                "SELECT COUNT(*) FROM contacts WHERE user_id=?", (user_id,)
+            ).fetchone()[0]
+            for user_id in (first_id, second_id)
+        }
+        already_linked = {row["user_id"] for row in existing_rows}
+        if any(counts[user_id] + int(user_id not in already_linked) > CONTACT_LIMIT
+               for user_id in (first_id, second_id)):
+            return "full", None
+
+        db.execute(
+            "INSERT OR IGNORE INTO contacts(user_id,peer_user_id,conversation_id,connected_at) "
+            "VALUES(?,?,?,?)",
+            (first_id, second_id, conversation_id, connected_at),
+        )
+        db.execute(
+            "INSERT OR IGNORE INTO contacts(user_id,peer_user_id,conversation_id,connected_at) "
+            "VALUES(?,?,?,?)",
+            (second_id, first_id, conversation_id, connected_at),
+        )
+        return "connected", conversation_id
+
+
+def list_contacts(user_id):
+    with database() as db:
+        rows = db.execute(
+            """SELECT c.conversation_id,c.connected_at,c.peer_user_id,
+                COALESCE(NULLIF(u.first_name,''),u.name) AS name
+            FROM contacts c
+            JOIN users u ON u.user_id=c.peer_user_id
+            JOIN contacts reciprocal ON reciprocal.user_id=c.peer_user_id
+                AND reciprocal.peer_user_id=c.user_id
+                AND reciprocal.conversation_id=c.conversation_id
+            WHERE c.user_id=? AND NOT EXISTS(
+                SELECT 1 FROM blocks b
+                WHERE (b.user_id=c.user_id AND b.blocked_user_id=c.peer_user_id)
+                   OR (b.user_id=c.peer_user_id AND b.blocked_user_id=c.user_id)
+            )""",
+            (user_id,),
+        ).fetchall()
+        contacts = []
+        for row in rows:
+            last = db.execute(
+                "SELECT text,created_at,id,sender_user_id FROM contact_messages "
+                "WHERE conversation_id=? ORDER BY id DESC LIMIT 1",
+                (row["conversation_id"],),
+            ).fetchone()
+            contacts.append({
+                "conversation_id": row["conversation_id"],
+                "peer_user_id": row["peer_user_id"],
+                "name": row["name"],
+                "connected_at": row["connected_at"],
+                "last_message": last["text"] if last else "",
+                "last_message_at": last["created_at"] if last else "",
+                "last_message_id": last["id"] if last else 0,
+                "last_message_mine": bool(last and last["sender_user_id"] == user_id),
+            })
+        contacts.sort(key=lambda item: item["last_message_id"] or 0, reverse=True)
+        return contacts
+
+
+def contact_peer(user_id, conversation_id):
+    with database() as db:
+        row = db.execute(
+            """SELECT c.peer_user_id FROM contacts c
+            JOIN contacts reciprocal ON reciprocal.user_id=c.peer_user_id
+                AND reciprocal.peer_user_id=c.user_id
+                AND reciprocal.conversation_id=c.conversation_id
+            WHERE c.user_id=? AND c.conversation_id=? AND NOT EXISTS(
+                SELECT 1 FROM blocks b
+                WHERE (b.user_id=c.user_id AND b.blocked_user_id=c.peer_user_id)
+                   OR (b.user_id=c.peer_user_id AND b.blocked_user_id=c.user_id)
+            )""",
+            (user_id, conversation_id),
+        ).fetchone()
+        return row["peer_user_id"] if row else None
+
+
+def add_contact_message(user_id, conversation_id, text, created_at):
+    with database() as db:
+        db.execute("BEGIN IMMEDIATE")
+        row = db.execute(
+            """SELECT c.peer_user_id FROM contacts c
+            JOIN contacts reciprocal ON reciprocal.user_id=c.peer_user_id
+                AND reciprocal.peer_user_id=c.user_id
+                AND reciprocal.conversation_id=c.conversation_id
+            WHERE c.user_id=? AND c.conversation_id=? AND NOT EXISTS(
+                SELECT 1 FROM blocks b
+                WHERE (b.user_id=c.user_id AND b.blocked_user_id=c.peer_user_id)
+                   OR (b.user_id=c.peer_user_id AND b.blocked_user_id=c.user_id)
+            )""",
+            (user_id, conversation_id),
+        ).fetchone()
+        if not row:
+            return False
+        db.execute(
+            "INSERT INTO contact_messages(conversation_id,sender_user_id,text,created_at) "
+            "VALUES(?,?,?,?)",
+            (conversation_id, user_id, text, created_at),
+        )
+        return True
+
+
+def contact_message_history(user_id, conversation_id, after=None, limit=100):
+    if not contact_peer(user_id, conversation_id):
+        return None
+    with database() as db:
+        if after is not None:
+            rows = db.execute(
+                "SELECT id,text,sender_user_id,created_at FROM contact_messages "
+                "WHERE conversation_id=? AND id>? ORDER BY id LIMIT ?",
+                (conversation_id, max(0, int(after)), max(1, min(100, int(limit)))),
+            ).fetchall()
+        else:
+            rows = db.execute(
+                """SELECT id,text,sender_user_id,created_at FROM (
+                    SELECT id,text,sender_user_id,created_at FROM contact_messages
+                    WHERE conversation_id=? ORDER BY id DESC LIMIT ?
+                ) ORDER BY id""",
+                (conversation_id, max(1, min(100, int(limit)))),
+            ).fetchall()
+        return [
+            {
+                "id": row["id"],
+                "text": row["text"],
+                "mine": row["sender_user_id"] == user_id,
+                "created_at": row["created_at"],
+            }
+            for row in rows
+        ]
+
+
+def remove_contact(user_id, conversation_id):
+    with database() as db:
+        db.execute("BEGIN IMMEDIATE")
+        row = db.execute(
+            "SELECT peer_user_id FROM contacts WHERE user_id=? AND conversation_id=?",
+            (user_id, conversation_id),
+        ).fetchone()
+        if not row:
+            return False
+        peer_id = row["peer_user_id"]
+        db.execute("DELETE FROM contact_messages WHERE conversation_id=?", (conversation_id,))
+        db.execute(
+            "DELETE FROM contacts WHERE (user_id=? AND peer_user_id=?) "
+            "OR (user_id=? AND peer_user_id=?)",
+            (user_id, peer_id, peer_id, user_id),
+        )
+        return True
 
 
 def delete_user(user_id):
@@ -321,5 +530,11 @@ def delete_user(user_id):
         email_hash = hashlib.sha256(user["email"].strip().lower().encode("utf-8")).hexdigest()
         db.execute("INSERT OR IGNORE INTO deleted_user_emails(email_hash) VALUES(?)", (email_hash,))
         db.execute("DELETE FROM blocks WHERE user_id=? OR blocked_user_id=?", (user_id, user_id))
+        db.execute(
+            "DELETE FROM contact_messages WHERE conversation_id IN "
+            "(SELECT conversation_id FROM contacts WHERE user_id=? OR peer_user_id=?)",
+            (user_id, user_id),
+        )
+        db.execute("DELETE FROM contacts WHERE user_id=? OR peer_user_id=?", (user_id, user_id))
         db.execute("DELETE FROM legacy_user_map WHERE user_id=?", (user_id,))
         return db.execute("DELETE FROM users WHERE user_id=?", (user_id,)).rowcount

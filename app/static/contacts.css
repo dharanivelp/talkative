@@ -1,0 +1,883 @@
+.contact-list-panel {
+    min-width: 0;
+    margin: 4px 0;
+    padding: 16px;
+    border: 1px solid #d5dfdc;
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 8px 30px #0001;
+}
+
+#mainContent {
+    max-width: 100%;
+    overflow-x: clip;
+}
+
+.chat-workspace {
+    width: 100%;
+    min-width: 0;
+}
+
+.app-layout-active {
+    display: grid;
+    width: 100%;
+    max-width: none;
+    min-height: 100vh;
+    grid-template-columns: minmax(160px, 0.9fr) minmax(0, 780px) minmax(200px, 1.1fr);
+    align-content: start;
+    column-gap: 12px;
+    padding: 30px 12px;
+}
+
+.app-layout-active > .shared-site-header,
+.app-layout-active > footer {
+    grid-column: 1 / -1;
+}
+
+.app-layout-active #contactSidebar {
+    position: sticky;
+    top: 58px;
+    grid-column: 1;
+    grid-row: 2;
+    height: calc(100vh - 70px);
+    min-width: 0;
+    align-self: start;
+    overflow-y: auto;
+}
+
+.app-layout-active #contactSidebar .contact-list-panel {
+    min-height: 100%;
+    margin: 0;
+}
+
+.app-layout-active #home,
+.app-layout-active #chatWorkspace {
+    grid-column: 2;
+    grid-row: 2;
+    width: 100%;
+    min-width: 0;
+    margin: 4px 0;
+}
+
+.app-layout-active .seo-intro {
+    grid-column: 2;
+    grid-row: 3;
+}
+
+.app-layout-active #chat,
+.app-layout-active #contactConversation {
+    width: 100%;
+    min-width: 0;
+    margin: 4px 0;
+}
+
+.app-layout-active #contactConversation {
+    height: calc(100vh - 70px);
+}
+
+.contact-list-heading,
+.contact-conversation-heading {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.contact-list-heading h2,
+.contact-conversation-heading h2 {
+    margin: 0;
+}
+
+.contact-list-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 10px;
+}
+
+.contact-notification-button {
+    margin: 0;
+    padding: 7px 10px;
+    background: #eef4f1;
+    color: #126b61;
+    font-size: 12px;
+}
+
+.contact-notification-button:disabled {
+    opacity: 0.7;
+    cursor: default;
+}
+
+.contact-notification-status,
+.contact-list-status {
+    min-height: 0;
+    margin: 5px 0;
+    color: #69766f;
+    font-size: 12px;
+}
+
+.contact-list-status:empty {
+    display: none;
+}
+
+.contact-list-heading span {
+    margin-left: auto;
+    color: #69766f;
+    font-size: 13px;
+    font-weight: 650;
+}
+
+.contact-find-card {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 8px 0 4px;
+    padding: 12px 14px;
+    border: 1px solid #d5dfdc;
+    border-radius: 10px;
+    background: #f4f6f8;
+    color: #17202a;
+    text-align: left;
+}
+
+.contact-find-card span {
+    display: grid;
+    min-width: 0;
+    gap: 2px;
+}
+
+.contact-find-card strong {
+    font-size: 14px;
+}
+
+.contact-find-card small {
+    color: #59645f;
+    font-size: 12px;
+}
+
+.contact-find-card .contact-new-message-indicator {
+    display: inline-flex;
+    align-items: center;
+}
+
+.contact-find-card .contact-find-subtitle {
+    display: block;
+    overflow-wrap: anywhere;
+    font-weight: 400;
+}
+
+.contact-new-message-indicator {
+    flex: 0 0 auto;
+    max-width: 100%;
+    padding: 4px 7px;
+    border-radius: 999px;
+    background: #15956f;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.contact-find-card svg {
+    width: 19px;
+    height: 19px;
+    flex: 0 0 auto;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.8;
+}
+
+.contact-find-card:hover:not(:disabled) {
+    background: #e9eef1;
+}
+
+.contact-find-card.is-active {
+    border-color: #b7d6c8;
+    background: #e5f2eb;
+    box-shadow: inset 3px 0 #16805d;
+    color: #174d3e;
+}
+
+.contact-find-card:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+#contactListStatus,
+#contactConversationStatus,
+#stayInTouchStatus {
+    min-height: 0;
+    margin: 6px 0;
+    color: #69766f;
+    font-size: 13px;
+}
+
+.contact-list {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+    margin: 4px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.contact-message-row {
+    position: relative;
+    min-width: 0;
+}
+
+.contact-open-button {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    min-height: 62px;
+    align-items: center;
+    gap: 11px;
+    margin: 0;
+    padding: 9px 8px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: #17202a;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.contact-open-button:hover:not(:disabled) {
+    background: #f4f6f8;
+}
+
+.contact-open-button.is-active {
+    background: #e5f2eb;
+    box-shadow: inset 3px 0 #16805d;
+}
+
+.contact-avatar {
+    position: relative;
+    display: grid;
+    flex: 0 0 42px;
+    width: 42px;
+    height: 42px;
+    place-items: center;
+    border-radius: 50%;
+    background: hsl(var(--contact-avatar-hue, 165) 38% 88%);
+    color: hsl(var(--contact-avatar-hue, 165) 42% 30%);
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1;
+    text-transform: uppercase;
+}
+
+.contact-avatar::after {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 10px;
+    height: 10px;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    background: #8a8886;
+    content: "";
+}
+
+.contact-avatar.is-online::after {
+    background: #13a10e;
+}
+
+.contact-row-details {
+    position: relative;
+    display: grid;
+    min-width: 0;
+    flex: 1 1 auto;
+    gap: 4px;
+    align-content: center;
+}
+
+.contact-row-heading {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.contact-row-name {
+    display: block;
+    overflow: hidden;
+    min-width: 0;
+    flex: 1 1 auto;
+    color: #17202a;
+    font-size: 14px;
+    font-weight: 650;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.contact-row-time {
+    flex: 0 0 auto;
+    color: #69766f;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.contact-message-preview {
+    display: block;
+    overflow: hidden;
+    width: 100%;
+    color: #69766f;
+    font-size: 12px;
+    line-height: 1.4;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.contact-unread-badge {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    display: grid;
+    min-width: 19px;
+    height: 19px;
+    place-items: center;
+    border-radius: 999px;
+    background: #15956f;
+    color: #fff;
+    font-size: 10px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    line-height: 19px;
+    pointer-events: none;
+}
+
+.contact-open-button.has-unread .contact-row-name {
+    font-weight: 750;
+}
+
+.contact-open-button.has-unread .contact-message-preview,
+.contact-open-button.has-unread .contact-row-time {
+    color: #087b59;
+}
+
+.contact-open-button.has-unread .contact-message-preview {
+    box-sizing: border-box;
+    padding-right: 25px;
+    font-weight: 600;
+}
+
+.contact-list-panel .contact-list li + li {
+    border-top: 1px solid #edf0ee;
+}
+
+.contact-list-panel .contact-list li + li .contact-open-button {
+    border-radius: 0;
+}
+
+.contact-list-panel .contact-list li:first-child .contact-open-button {
+    border-radius: 8px 8px 0 0;
+}
+
+.contact-list-panel .contact-list li:last-child .contact-open-button {
+    border-radius: 0 0 8px 8px;
+}
+
+.contact-list-panel .contact-list li:only-child .contact-open-button {
+    border-radius: 8px;
+}
+
+.contact-list-panel .contact-list {
+    max-height: 62vh;
+    overflow-y: auto;
+}
+
+.contact-empty {
+    padding: 12px 0;
+    color: #69766f;
+    font-size: 14px;
+}
+
+.contact-conversation {
+    display: flex;
+    height: min(68vh, 620px);
+    min-height: 0;
+    flex-direction: column;
+}
+
+.contact-conversation-heading h2 {
+    flex: 0 1 auto;
+    overflow: hidden;
+    min-width: 0;
+    font-size: 18px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.contact-peer-heading {
+    display: flex;
+    min-width: 0;
+    flex: 1 1 auto;
+    align-items: center;
+    gap: 8px;
+}
+
+.contact-conversation-heading button {
+    flex: 0 0 auto;
+}
+
+.contact-more-menu {
+    flex: 0 0 36px;
+}
+
+.contact-more-menu > summary {
+    display: grid;
+    width: 36px;
+    height: 36px;
+    place-items: center;
+    border: 1px solid #d5dfdc;
+    border-radius: 7px;
+    background: #fff;
+    color: #126b61;
+    cursor: pointer;
+    list-style: none;
+}
+
+.contact-more-menu > summary::-webkit-details-marker {
+    display: none;
+}
+
+.contact-more-menu > summary svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-width: 1.8;
+}
+
+.contact-more-menu .remove-contact-button {
+    color: #9d302b;
+}
+
+.contact-messages {
+    display: flex;
+    min-height: 0;
+    flex: 1;
+    min-width: 0;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+    margin: 10px 0;
+    padding: 12px;
+    border-radius: 10px;
+    background: #f4f6f8;
+}
+
+.contact-message-entry {
+    display: flex;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    align-items: flex-end;
+    gap: 5px;
+}
+
+.contact-message {
+    width: fit-content;
+    max-width: min(78%, 560px);
+    min-width: 0;
+    flex: 0 1 auto;
+    padding: 8px 11px;
+    border-radius: 12px 12px 12px 3px;
+    background: #e2e8e5;
+    overflow-wrap: anywhere;
+}
+
+.contact-message-entry.contact-message-outgoing .contact-message {
+    border-radius: 12px 12px 3px 12px;
+    background: #dbeafe;
+}
+
+.contact-message p {
+    margin: 0;
+    white-space: pre-wrap;
+}
+
+.contact-message-time {
+    display: block;
+    flex: 0 0 auto;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #69766f;
+    font-size: 9px;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.contact-message-entry.contact-message-outgoing {
+    justify-content: flex-end;
+}
+
+.contact-message-meta {
+    display: flex;
+    flex: 0 0 auto;
+    align-self: flex-end;
+    margin: 0 4px 2px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+}
+
+.contact-message-entry.contact-message-outgoing .contact-message-meta {
+    order: -1;
+}
+
+#contactMessageForm {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 8px;
+}
+
+#contactMessageForm input {
+    min-width: 0;
+    flex: 1;
+    margin: 0;
+}
+
+#contactMessageForm button {
+    margin: 0;
+}
+
+#stayInTouchButton {
+    order: -1;
+    display: grid;
+    flex: 0 0 36px;
+    width: 36px;
+    height: 36px;
+    place-items: center;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: #126b61;
+    cursor: pointer;
+}
+
+#stayInTouchButton svg {
+    width: 19px;
+    height: 19px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+#stayInTouchButton[aria-pressed="true"] {
+    color: #087b59;
+}
+
+#stayInTouchButton:disabled {
+    opacity: 0.58;
+    cursor: not-allowed;
+}
+
+.stay-in-touch-invite {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 10px 0;
+    padding: 12px 14px;
+    border: 1px solid #b7d6c8;
+    border-left: 3px solid #126b61;
+    border-radius: 9px;
+    background: #f0f8f4;
+}
+
+.stay-in-touch-invite p {
+    margin: 0;
+    color: #26332d;
+    font-size: 14px;
+}
+
+.stay-in-touch-invite > div {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 6px;
+}
+
+.stay-in-touch-invite button {
+    margin: 0;
+    background: #126b61;
+    white-space: nowrap;
+}
+
+.stay-in-touch-invite .decline-stay-button {
+    border: 1px solid #c4ceca;
+    background: transparent;
+    color: #37413c;
+}
+
+.contact-conversation {
+    margin: 0;
+}
+
+.contact-peer-info {
+    margin: 14px 0;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #d5dfdc;
+}
+
+.contact-peer-presence {
+    display: inline-block;
+    flex: 0 0 10px;
+    width: 10px;
+    height: 10px;
+    margin: 0 0 0 -4px;
+    padding: 0;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    background: #8a8886;
+    vertical-align: middle;
+    box-sizing: border-box;
+}
+
+.contact-peer-presence.is-online {
+    background: #13a10e;
+}
+
+.contact-avatar::after,
+.contact-peer-presence {
+    box-shadow: 0 0 0 1px #fff;
+}
+
+.contact-typing-indicator {
+    margin: 0 0 6px;
+    color: #59645f;
+    font-size: 12px;
+    font-style: italic;
+}
+
+.about-guidelines {
+    padding-left: 22px;
+}
+
+.about-guidelines li + li {
+    margin-top: 8px;
+}
+
+html[data-theme="dark"] .contact-list-panel {
+    border-color: #383838;
+    background: #111;
+    box-shadow: 0 8px 30px #000;
+}
+
+html[data-theme="dark"] .contact-find-card {
+    border-color: #444;
+    background: #1b1b1b;
+    color: #eee;
+}
+
+html[data-theme="dark"] .contact-find-card small {
+    color: #aaa;
+}
+
+html[data-theme="dark"] .contact-new-message-indicator {
+    background: #2b8c68;
+    color: #fff;
+}
+
+html[data-theme="dark"] .contact-find-card:hover:not(:disabled) {
+    background: #292929;
+}
+
+html[data-theme="dark"] .contact-find-card.is-active {
+    border-color: #385749;
+    background: #1d3027;
+    box-shadow: inset 3px 0 #72c49e;
+    color: #d0e9dd;
+}
+
+html[data-theme="dark"] .contact-list-heading span,
+html[data-theme="dark"] .contact-notification-status,
+html[data-theme="dark"] .contact-list-status,
+html[data-theme="dark"] #contactListStatus,
+html[data-theme="dark"] #contactConversationStatus,
+html[data-theme="dark"] #stayInTouchStatus,
+html[data-theme="dark"] .contact-empty,
+html[data-theme="dark"] .contact-message-time {
+    color: #aaa;
+}
+
+html[data-theme="dark"] .contact-notification-button {
+    background: #202a27;
+    color: #a8d5c4;
+}
+
+html[data-theme="dark"] .contact-notification-status,
+html[data-theme="dark"] .contact-list-status {
+    color: #aaa;
+}
+
+html[data-theme="dark"] .contact-open-button {
+    color: #eee;
+}
+
+html[data-theme="dark"] .contact-open-button:hover:not(:disabled) {
+    background: #222;
+}
+
+html[data-theme="dark"] .contact-open-button.is-active {
+    background: #1d3027;
+    box-shadow: inset 3px 0 #72c49e;
+}
+
+html[data-theme="dark"] .contact-row-name {
+    color: #eee;
+}
+
+html[data-theme="dark"] .contact-row-time,
+html[data-theme="dark"] .contact-message-preview {
+    color: #aaa;
+}
+
+html[data-theme="dark"] .contact-avatar {
+    background: hsl(var(--contact-avatar-hue, 165) 24% 27%);
+    color: hsl(var(--contact-avatar-hue, 165) 55% 82%);
+}
+
+html[data-theme="dark"] .contact-avatar::after,
+html[data-theme="dark"] .contact-peer-presence {
+    border-color: #111;
+    box-shadow: 0 0 0 1px #111;
+}
+
+html[data-theme="dark"] .contact-open-button.has-unread .contact-message-preview,
+html[data-theme="dark"] .contact-open-button.has-unread .contact-row-time {
+    color: #8bd0ad;
+}
+
+html[data-theme="dark"] .contact-list-panel .contact-list li + li {
+    border-color: #2a2a2a;
+}
+
+html[data-theme="dark"] .stay-in-touch-invite {
+    border-color: #385749;
+    border-left-color: #72ad91;
+    background: #17231d;
+}
+
+html[data-theme="dark"] .stay-in-touch-invite p {
+    color: #ddd;
+}
+
+html[data-theme="dark"] .stay-in-touch-invite .decline-stay-button {
+    border-color: #555;
+    background: #222;
+    color: #ddd;
+}
+
+html[data-theme="dark"] .contact-peer-info {
+    border-color: #383838;
+}
+
+html[data-theme="dark"] .contact-typing-indicator {
+    color: #aaa;
+}
+
+html[data-theme="dark"] .contact-messages {
+    background: #090909;
+}
+
+html[data-theme="dark"] .contact-more-menu > summary {
+    border-color: #444;
+    background: #111;
+    color: #ddd;
+}
+
+html[data-theme="dark"] .contact-message {
+    background: #252525;
+    color: #eee;
+}
+
+html[data-theme="dark"] .contact-message-entry.contact-message-outgoing .contact-message {
+    background: #20334a;
+}
+
+html[data-theme="dark"] #stayInTouchButton {
+    background: transparent;
+}
+
+html[data-theme="dark"] #stayInTouchButton:hover:not(:disabled) {
+    background: #222;
+}
+
+@media (max-width: 1235px) {
+    .app-layout-active {
+        grid-template-columns: minmax(0, 820px);
+        justify-content: center;
+        padding: 30px 16px;
+    }
+
+    .app-layout-active > .shared-site-header,
+    .app-layout-active > footer,
+    .app-layout-active #home,
+    .app-layout-active #chatWorkspace,
+    .app-layout-active #contactSidebar {
+        grid-column: 1;
+    }
+
+    .app-layout-active #contactSidebar {
+        position: static;
+        grid-row: 3;
+        height: auto;
+        overflow: visible;
+    }
+
+    .app-layout-active #contactSidebar .contact-list-panel {
+        min-height: 0;
+        margin: 4px 0;
+    }
+
+    .app-layout-active #home,
+    .app-layout-active #chatWorkspace {
+        grid-row: 2;
+    }
+
+    .app-layout-active .seo-intro {
+        grid-column: 1;
+        grid-row: 4;
+    }
+
+    .app-layout-active > footer {
+        grid-row: 4;
+    }
+}
+
+@media (max-width: 520px) {
+    .contact-list-controls {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .stay-in-touch-invite {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .contact-conversation-heading {
+        gap: 6px;
+    }
+
+    .contact-message-entry {
+        max-width: 88%;
+    }
+}

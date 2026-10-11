@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+{% if app_env == "production" %}<meta name="robots" content="index,follow">{% else %}<meta name="robots" content="noindex,nofollow">{% endif %}
+<title>About Talkative</title>
+<meta name="description" content="Learn about Talkative and how to have respectful, safe one-to-one conversations.">
+<link rel="canonical" href="{{ site_url }}/about">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Talkative">
+<meta property="og:title" content="About Talkative">
+<meta property="og:description" content="Meet people through one-to-one conversations and get to know each other at your own pace.">
+<meta property="og:url" content="{{ site_url }}/about">
+<link rel="icon" type="image/png" sizes="64x64" href="/static/logo/Talkative_Favicon_Black_Transparent_64x64.png" media="(prefers-color-scheme: light)">
+<link rel="icon" type="image/png" sizes="64x64" href="/static/logo/Talkative_Favicon_White_Transparent_64x64.png" media="(prefers-color-scheme: dark)">
+<script>try{if(localStorage.getItem("talkative-theme")==="dark")document.documentElement.dataset.theme="dark"}catch{}</script>
+<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/development.css">
+<link rel="stylesheet" href="/static/account.css">
+<link rel="stylesheet" href="/static/theme.css?v=2">
+</head>
+<body class="legal-page"><main>
+<div class="shared-site-header">{% include "_header.html" %}</div>
+<article class="legal-document">
+<h1>About Talkative</h1>
+<p>Talkative is a place to meet new people through one-to-one conversations. Find someone to chat with and get to know each other at your own pace. If you both choose to stay in touch during a conversation, you can keep messaging from your Stayed in touch chats.</p>
+<h2>Chat with care</h2>
+<ul class="about-guidelines">
+<li>Treat the person you are chatting with respectfully.</li>
+<li>Start with a friendly greeting and let the conversation develop at a comfortable pace.</li>
+<li>Protect your privacy. Do not share your address, phone number, passwords, financial details, or other sensitive information.</li>
+<li>Harassment and explicit content are not allowed. Use the report or block controls if a conversation makes you uncomfortable.</li>
+<li>Only agree to stay in touch if you are comfortable doing so. You can remove a saved connection later.</li>
+</ul>
+<p>Talkative is for people aged 18 and older. Review our <a href="/terms">Terms and Conditions</a> and <a href="/privacy">Privacy Policy</a> before using the service.</p>
+</article>
+</main>
+{% include "_footer.html" %}
+</body>
+</html>

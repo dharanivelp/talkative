@@ -17,13 +17,22 @@ class SeoTests(unittest.TestCase):
         self.assertIn(b'<link rel="canonical" href="https://talkative.space/">', response.data)
         self.assertIn(b'<meta property="og:title"', response.data)
         self.assertIn(b"Meet people through conversations", response.data)
+        self.assertIn(b'class="chat-guidelines"', response.data)
+        self.assertIn(b"Treat the person you are chatting with respectfully.", response.data)
 
     def test_sitemap_lists_only_public_pages(self):
         response = self.client.get("/sitemap.xml")
         self.assertEqual(response.mimetype, "application/xml")
         self.assertIn(b"https://talkative.space/terms", response.data)
         self.assertIn(b"https://talkative.space/privacy", response.data)
+        self.assertIn(b"https://talkative.space/about", response.data)
         self.assertNotIn(b"/account", response.data)
+
+    def test_about_page_contains_chat_guidance(self):
+        response = self.client.get("/about")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Chat with care", response.data)
+        self.assertIn(b"Protect your privacy", response.data)
 
     def test_robots_disallows_crawling_in_nonproduction(self):
         with patch.object(auth, "APP_ENV", "development"):

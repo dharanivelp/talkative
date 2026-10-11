@@ -1,0 +1,333 @@
+.app-layout-active #globalChat {
+    grid-column: 3;
+    grid-row: 2;
+}
+
+.app-layout-guest {
+    display: grid;
+    width: 100%;
+    max-width: none;
+    min-height: 100vh;
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 360px);
+    justify-content: stretch;
+    align-content: start;
+    column-gap: 12px;
+    padding: 30px 12px;
+}
+
+.app-layout-guest > .shared-site-header,
+.app-layout-guest > footer {
+    grid-column: 1 / -1;
+}
+
+.app-layout-guest #login {
+    grid-column: 1;
+    grid-row: 2;
+    width: 100%;
+    max-width: 820px;
+    min-width: 0;
+    justify-self: end;
+    margin: 4px 0;
+}
+
+.app-layout-guest #globalChat {
+    grid-column: 2;
+    grid-row: 2;
+}
+
+.app-layout-guest .seo-intro {
+    grid-column: 1;
+    grid-row: 3;
+    max-width: 820px;
+    justify-self: end;
+}
+
+.global-chat-panel {
+    display: flex;
+    height: calc(100vh - 70px);
+    min-height: 360px;
+    min-width: 0;
+    flex-direction: column;
+    align-self: start;
+    margin: 4px 0;
+    padding: 16px;
+}
+
+.global-chat-heading {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.global-chat-heading h2 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.global-chat-heading p,
+.global-chat-note {
+    margin: 4px 0 0;
+    color: #69766f;
+    font-size: 12px;
+}
+
+.global-chat-status {
+    min-height: 0;
+    margin: 4px 0;
+    color: #9d302b;
+    font-size: 12px;
+}
+
+.global-chat-status:empty {
+    display: none;
+}
+
+.global-chat-messages {
+    display: flex;
+    min-height: 0;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+    margin: 10px 0;
+    padding: 0;
+    list-style: none;
+}
+
+.global-chat-message {
+    align-self: flex-start;
+    max-width: 100%;
+    padding: 8px 10px;
+    border-radius: 10px 10px 10px 3px;
+    background: #f1f4f3;
+    overflow-wrap: anywhere;
+}
+
+.global-chat-message.is-mine {
+    align-self: flex-end;
+    background: #e2f2e9;
+}
+
+.global-chat-message-heading {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.global-chat-message-name {
+    color: #126b61;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.global-chat-message time {
+    color: #69766f;
+    font-size: 10px;
+    white-space: nowrap;
+}
+
+.global-chat-message p {
+    margin: 3px 0 0;
+    font-size: 13px;
+    white-space: pre-wrap;
+}
+
+.global-chat-empty {
+    margin: auto 0;
+    color: #69766f;
+    font-size: 13px;
+    text-align: center;
+}
+
+.global-chat-form {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 6px;
+}
+
+.global-chat-form input {
+    min-width: 0;
+    flex: 1 1 auto;
+    margin: 0;
+    padding: 9px;
+    font-size: 14px;
+}
+
+.global-chat-form button {
+    flex: 0 0 auto;
+    margin: 0;
+    padding: 9px 12px;
+}
+
+.global-chat-note {
+    line-height: 1.4;
+}
+
+.global-chat-guest-gate {
+    margin: 0 0 10px;
+    padding: 10px;
+    border: 1px solid #d5dfdc;
+    border-radius: 9px;
+    background: #f4f6f8;
+}
+
+.global-chat-guest-gate p {
+    margin: 0 0 8px;
+    font-size: 13px;
+}
+
+.global-chat-guest-gate div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.global-chat-guest-gate button {
+    margin: 0;
+    padding: 7px 10px;
+    font-size: 12px;
+}
+
+.global-chat-guest-gate .global-chat-signup-button {
+    border: 1px solid #c4ceca;
+    background: transparent;
+    color: #126b61;
+}
+
+html[data-theme="dark"] .global-chat-heading p,
+html[data-theme="dark"] .global-chat-note,
+html[data-theme="dark"] .global-chat-preview-timer,
+html[data-theme="dark"] .global-chat-message time,
+html[data-theme="dark"] .global-chat-empty {
+    color: #aaa;
+}
+
+html[data-theme="dark"] .global-chat-message,
+html[data-theme="dark"] .global-chat-guest-gate {
+    border-color: #383838;
+    background: #1b1b1b;
+}
+
+html[data-theme="dark"] .global-chat-message.is-mine {
+    background: #1d3027;
+}
+
+html[data-theme="dark"] .global-chat-message-name {
+    color: #8bd0ad;
+}
+
+html[data-theme="dark"] .global-chat-guest-gate .global-chat-signup-button {
+    border-color: #555;
+    background: transparent;
+    color: #8bd0ad;
+}
+
+@media (max-width: 1235px) {
+    .app-layout-active #globalChat {
+        grid-column: 1;
+        grid-row: 4;
+    }
+
+    .app-layout-guest {
+        grid-template-columns: minmax(0, 820px);
+        justify-content: center;
+        padding: 30px 16px;
+    }
+
+    .app-layout-guest #login,
+    .app-layout-guest #globalChat,
+    .app-layout-guest .seo-intro {
+        grid-column: 1;
+    }
+
+    .app-layout-guest #login {
+        grid-row: 2;
+    }
+
+    .app-layout-guest #globalChat {
+        grid-row: 3;
+    }
+
+    .app-layout-guest .seo-intro {
+        grid-row: 4;
+    }
+
+    .app-layout-guest > footer {
+        grid-row: 5;
+    }
+
+    .app-layout-active .seo-intro {
+        grid-row: 5;
+    }
+
+    .app-layout-active > footer {
+        grid-row: 6;
+    }
+
+    .global-chat-panel {
+        height: min(68vh, 620px);
+        min-height: 360px;
+    }
+}
+
+@media (min-width: 761px) and (max-width: 1235px) {
+    .app-layout-active,
+    .app-layout-guest {
+        grid-template-columns: minmax(0, 1fr) minmax(260px, 360px);
+        justify-content: stretch;
+        column-gap: 12px;
+    }
+
+    .app-layout-active #home,
+    .app-layout-active #chatWorkspace,
+    .app-layout-guest #login,
+    .app-layout-active .seo-intro,
+    .app-layout-guest .seo-intro {
+        grid-column: 1;
+    }
+
+    .app-layout-active #home,
+    .app-layout-active #chatWorkspace,
+    .app-layout-guest #login,
+    .app-layout-active #globalChat,
+    .app-layout-guest #globalChat {
+        grid-row: 2;
+    }
+
+    .app-layout-active #globalChat,
+    .app-layout-guest #globalChat {
+        grid-column: 2;
+    }
+
+    .app-layout-active #contactSidebar {
+        grid-column: 1;
+        grid-row: 3;
+    }
+
+    .app-layout-active .seo-intro,
+    .app-layout-guest .seo-intro {
+        grid-row: 4;
+    }
+
+    .app-layout-active > footer,
+    .app-layout-guest > footer {
+        grid-column: 1 / -1;
+        grid-row: 5;
+    }
+
+    .app-layout-guest #login,
+    .app-layout-guest .seo-intro {
+        max-width: 820px;
+        justify-self: center;
+    }
+}
+
+@media (max-width: 520px) {
+    .global-chat-panel {
+        min-height: 420px;
+        padding: 14px;
+    }
+}

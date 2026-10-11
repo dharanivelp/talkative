@@ -67,3 +67,22 @@ html[data-theme="dark"] .legal-document .legal-review-note{background:#302817;co
 .brand .logo-dark{display:none}
 html[data-theme="dark"] .brand .logo-light{display:none}
 html[data-theme="dark"] .brand .logo-dark{display:block}
+body{background-image:radial-gradient(ellipse at 50% 0,rgba(18,107,97,.055),transparent 42%)}
+.card,.account-panel,.legal-document,.sign-in-panel,.admin-dialog{box-shadow:0 12px 36px rgba(23,32,42,.075),0 1px 3px rgba(23,32,42,.035)}
+.contact-list-panel{box-shadow:0 8px 24px rgba(23,32,42,.055)}
+button{transition:background-color .16s ease,color .16s ease,border-color .16s ease,box-shadow .16s ease,filter .16s ease}
+button:hover:not(:disabled){filter:brightness(1.045);box-shadow:0 3px 10px rgba(23,32,42,.12)}
+button:active:not(:disabled){filter:brightness(.97)}
+button:disabled{filter:saturate(.65)}
+input,select,textarea{transition:border-color .16s ease,box-shadow .16s ease,background-color .16s ease}
+input:focus,select:focus,textarea:focus{border-color:#16805d;box-shadow:0 0 0 3px rgba(22,128,93,.14);outline:none}
+a{transition:color .16s ease,text-decoration-color .16s ease}
+a:hover{text-decoration-color:#16805d}
+::selection{background:rgba(22,128,93,.2);color:inherit}
+.site-footer a:hover,.legal-document a:hover{color:#087b59}
+html[data-theme="dark"] body{background-image:radial-gradient(ellipse at 50% 0,rgba(76,145,112,.09),transparent 44%)}
+html[data-theme="dark"] .card,html[data-theme="dark"] .account-panel,html[data-theme="dark"] .legal-document,html[data-theme="dark"] .sign-in-panel,html[data-theme="dark"] .admin-dialog{box-shadow:0 14px 40px rgba(0,0,0,.32),0 1px 3px rgba(255,255,255,.025)}
+html[data-theme="dark"] .contact-list-panel{box-shadow:0 8px 24px rgba(0,0,0,.25)}
+html[data-theme="dark"] input:focus,html[data-theme="dark"] select:focus,html[data-theme="dark"] textarea:focus{border-color:#72ad91;box-shadow:0 0 0 3px rgba(114,173,145,.18)}
+html[data-theme="dark"] .site-footer a:hover,html[data-theme="dark"] .legal-document a:hover{color:#a8d5c4}
+@media(prefers-reduced-motion:reduce){button,input,select,textarea,a{transition:none}}

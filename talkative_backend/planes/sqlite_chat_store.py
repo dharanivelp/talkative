@@ -6,6 +6,10 @@ from datetime import datetime, timezone
 from talkative_backend.planes.sqlite_state_store import client
 PREFIX = "talkative:"
 PRESENCE_TIMEOUT = 25
+LAST_SEEN_RETENTION = 90 * 24 * 60 * 60
+GLOBAL_CHAT_MESSAGES_KEY = f"{PREFIX}global-chat-messages"
+GLOBAL_CHAT_SEQUENCE_KEY = f"{PREFIX}global-chat-sequence"
+GLOBAL_CHAT_MAX_MESSAGES = 500
 
 
 def init():
@@ -25,6 +29,7 @@ def touch_presence(user_id):
     now = time.time()
     key = f"{PREFIX}online"
     client.zadd(key, {user_id: now})
+    client.set(f"{PREFIX}last-seen:{user_id}", now, ex=LAST_SEEN_RETENTION)
     client.zremrangebyscore(key, "-inf", now - PRESENCE_TIMEOUT)
     return client.zcard(key)
 
@@ -36,12 +41,65 @@ def online_count():
 
 
 def remove_presence(user_id):
+    client.set(f"{PREFIX}last-seen:{user_id}", time.time(), ex=LAST_SEEN_RETENTION)
     client.zrem(f"{PREFIX}online", user_id)
 
 
 def is_online(user_id):
     score = client.zscore(f"{PREFIX}online", user_id)
     return score is not None and time.time() - score <= PRESENCE_TIMEOUT
+
+
+def last_seen(user_id):
+    stored = client.get(f"{PREFIX}last-seen:{user_id}")
+    if stored is not None:
+        try:
+            return float(stored)
+        except (TypeError, ValueError):
+            return None
+    score = client.zscore(f"{PREFIX}online", user_id)
+    return float(score) if score is not None else None
+
+
+def set_contact_typing(conversation_id, user_id):
+    client.set(f"{PREFIX}contact-typing:{conversation_id}:{user_id}", "1", ex=3)
+
+
+def contact_peer_typing(conversation_id, peer_user_id):
+    return bool(client.exists(f"{PREFIX}contact-typing:{conversation_id}:{peer_user_id}"))
+
+
+def global_chat_messages(after=None, limit=50):
+    if after is None:
+        encoded_messages = client.zrange(GLOBAL_CHAT_MESSAGES_KEY, -limit, -1)
+    else:
+        encoded_messages = client.zrangebyscore(
+            GLOBAL_CHAT_MESSAGES_KEY, f"({max(0, int(after))}", "+inf"
+        )[:limit]
+    return [json.loads(encoded) for encoded in encoded_messages]
+
+
+def add_global_chat_message(user_id, name, text, created_at):
+    with client.lock(f"{PREFIX}global-chat-lock", timeout=5, blocking_timeout=5):
+        rate_key = f"{PREFIX}global-chat-rate:{user_id}"
+        if not client.set(rate_key, "1", nx=True, ex=2):
+            return None
+        message_id = client.incr(GLOBAL_CHAT_SEQUENCE_KEY)
+        payload = json.dumps({
+            "id": message_id,
+            "sender_user_id": user_id,
+            "name": name,
+            "text": text,
+            "created_at": created_at,
+        })
+        client.zadd(GLOBAL_CHAT_MESSAGES_KEY, {payload: message_id})
+        message_count = client.zcard(GLOBAL_CHAT_MESSAGES_KEY)
+        if message_count > GLOBAL_CHAT_MAX_MESSAGES:
+            expired = client.zrange(
+                GLOBAL_CHAT_MESSAGES_KEY, 0, message_count - GLOBAL_CHAT_MAX_MESSAGES - 1
+            )
+            client.zrem(GLOBAL_CHAT_MESSAGES_KEY, *expired)
+        return message_id
 
 
 def match_or_queue(user_id, is_blocked, timestamp, ip_address=""):
@@ -111,7 +169,69 @@ def read_messages(session_id, user_id, after):
         "leave_seconds": max(0, int(leave_until - time.time() + 0.999)) if leave_pending else 0,
         "leave_until": leave_until if leave_pending else 0,
         "peer_online": is_online(peer_id),
+        "stay_in_touch_by_me": state.get(f"stay_in_touch:{user_id}") == "1",
+        "stay_in_touch_by_peer": state.get(f"stay_in_touch:{peer_id}") == "1",
+        "stay_in_touch_result": state.get("stay_in_touch_result", ""),
     }
+
+
+def agree_stay_in_touch(session_id, user_id):
+    key = _session_key(session_id)
+    with client.lock(f"{PREFIX}stay-in-touch-lock:{session_id}", timeout=5, blocking_timeout=5):
+        state = user_session(session_id, user_id)
+        if not state or state.get("ended_at"):
+            return None
+        if state.get("stay_in_touch_result") == "declined":
+            peer_id = state["user_b"] if state["user_a"] == user_id else state["user_a"]
+            return {
+                "user_a": state["user_a"],
+                "user_b": state["user_b"],
+                "by_me": state.get(f"stay_in_touch:{user_id}") == "1",
+                "by_peer": state.get(f"stay_in_touch:{peer_id}") == "1",
+                "result": "declined",
+            }
+        client.hset(key, mapping={f"stay_in_touch:{user_id}": "1"})
+        state = client.hgetall(key)
+        peer_id = state["user_b"] if state["user_a"] == user_id else state["user_a"]
+        return {
+            "user_a": state["user_a"],
+            "user_b": state["user_b"],
+            "by_me": state.get(f"stay_in_touch:{user_id}") == "1",
+            "by_peer": state.get(f"stay_in_touch:{peer_id}") == "1",
+            "result": state.get("stay_in_touch_result", ""),
+        }
+
+
+def decline_stay_in_touch(session_id, user_id):
+    key = _session_key(session_id)
+    with client.lock(f"{PREFIX}stay-in-touch-lock:{session_id}", timeout=5, blocking_timeout=5):
+        state = user_session(session_id, user_id)
+        if not state or state.get("ended_at"):
+            return None
+        peer_id = state["user_b"] if state["user_a"] == user_id else state["user_a"]
+        if (
+            state.get("stay_in_touch_result")
+            or state.get(f"stay_in_touch:{user_id}") == "1"
+            or state.get(f"stay_in_touch:{peer_id}") != "1"
+        ):
+            return None
+        client.hset(key, mapping={"stay_in_touch_result": "declined"})
+        state = client.hgetall(key)
+        return {
+            "user_a": state["user_a"],
+            "user_b": state["user_b"],
+            "by_me": state.get(f"stay_in_touch:{user_id}") == "1",
+            "by_peer": state.get(f"stay_in_touch:{peer_id}") == "1",
+            "result": "declined",
+        }
+
+
+def set_stay_in_touch_result(session_id, result):
+    state = client.hgetall(_session_key(session_id))
+    if not state:
+        return False
+    client.hset(_session_key(session_id), mapping={"stay_in_touch_result": result})
+    return True
 
 
 def begin_leave(session_id, user_id, seconds=5):

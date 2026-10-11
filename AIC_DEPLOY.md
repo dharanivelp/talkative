@@ -17,6 +17,7 @@ Set these environment variables in AIC's app settings:
 | Variable | Value |
 | --- | --- |
 | `APP_ENV` | `production` |
+| `GLOBAL_CHAT_SIMULATION_ENABLED` | `false` (set to `true` only while testing the simulated Global chat feed) |
 | `SESSION_SECRET` | A newly generated, high-entropy secret |
 | `ADMIN_USERNAME` | The admin account name |
 | `ADMIN_PASSWORD` | A new, unique admin password |
@@ -30,6 +31,12 @@ and chat state are SQLite files; without persistent storage they can be lost
 when AIC replaces or restarts the app. Back up these files securely and test
 restores. Keep the app to one instance: SQLite is not the shared database for
 horizontal or multi-host scaling.
+
+`DEMO_ONLINE_COUNT_ENABLED` only controls the demo online count in the header.
+The Global chat simulator is controlled separately by
+`GLOBAL_CHAT_SIMULATION_ENABLED`. When enabled, simulated messages are visible
+to all visitors but remain separate from real chat history; turn it off after
+testing and restart/redeploy the app for the setting to take effect.
 
 ## Before accepting users
 

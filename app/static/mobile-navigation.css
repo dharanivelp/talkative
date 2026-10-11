@@ -1,0 +1,284 @@
+.mobile-section-tabs {
+    display: none;
+}
+
+.mobile-chat-back {
+    display: none;
+}
+
+@media (max-width: 760px) {
+    #mainContent.app-layout-active,
+    #mainContent.app-layout-guest {
+        grid-template-columns: minmax(0, 1fr);
+        align-content: start;
+        padding: 30px 12px calc(88px + env(safe-area-inset-bottom));
+    }
+
+    #mainContent.app-layout-active > .shared-site-header,
+    #mainContent.app-layout-guest > .shared-site-header {
+        grid-column: 1;
+    }
+
+    #mainContent[data-mobile-section="global"] #contactSidebar,
+    #mainContent[data-mobile-section="global"] #login,
+    #mainContent[data-mobile-section="global"] #home,
+    #mainContent[data-mobile-section="global"] #chatWorkspace,
+    #mainContent[data-mobile-section="global"] .seo-intro {
+        display: none !important;
+    }
+
+    #mainContent[data-mobile-section="global"] #globalChat {
+        display: flex !important;
+        grid-column: 1;
+        grid-row: 2;
+        width: 100%;
+        height: calc(100dvh - 148px - env(safe-area-inset-bottom));
+        min-height: min(360px, calc(100dvh - 148px - env(safe-area-inset-bottom)));
+        max-height: none;
+        margin: 4px 0;
+    }
+
+    #mainContent[data-mobile-section="chat"] #globalChat,
+    #mainContent[data-mobile-section="chat"] .seo-intro {
+        display: none !important;
+    }
+
+    #mainContent.app-layout-active[data-mobile-section="chat"][data-mobile-chat-view="list"] #contactSidebar {
+        position: static;
+        display: block !important;
+        grid-column: 1;
+        grid-row: 2;
+        width: 100%;
+        height: auto;
+        max-height: none;
+        overflow: visible;
+    }
+
+    #mainContent.app-layout-active[data-mobile-section="chat"][data-mobile-chat-view="list"] #homeContactListPanel {
+        display: block !important;
+        min-height: 0;
+        max-height: calc(100dvh - 142px - env(safe-area-inset-bottom));
+        overflow-y: auto;
+        margin: 4px 0;
+    }
+
+    #mainContent.app-layout-active[data-mobile-section="chat"][data-mobile-chat-view="list"] #chatContactListPanel,
+    #mainContent.app-layout-active[data-mobile-section="chat"][data-mobile-chat-view="list"] #home,
+    #mainContent.app-layout-active[data-mobile-section="chat"][data-mobile-chat-view="list"] #chatWorkspace {
+        display: none !important;
+    }
+
+    #mainContent.app-layout-active[data-mobile-section="chat"][data-mobile-chat-view="thread"] #contactSidebar,
+    #mainContent.app-layout-active[data-mobile-section="chat"][data-mobile-chat-view="thread"] #home,
+    #mainContent.app-layout-active[data-mobile-section="chat"][data-mobile-chat-view="thread"] #chat {
+        display: none !important;
+    }
+
+    #mainContent.app-layout-active[data-mobile-section="chat"][data-mobile-chat-view="thread"] #chatWorkspace {
+        display: block !important;
+        grid-column: 1;
+        grid-row: 2;
+        width: 100%;
+    }
+
+    #mainContent.app-layout-active[data-mobile-section="chat"][data-mobile-chat-view="thread"] #contactConversation {
+        display: flex !important;
+        width: 100%;
+        height: calc(100dvh - 148px - env(safe-area-inset-bottom));
+        min-height: min(360px, calc(100dvh - 148px - env(safe-area-inset-bottom)));
+        max-height: none;
+        margin: 4px 0;
+    }
+
+    #mainContent.app-layout-active[data-mobile-section="chat"][data-mobile-chat-view="random"] #contactSidebar,
+    #mainContent.app-layout-active[data-mobile-section="chat"][data-mobile-chat-view="random"] #globalChat {
+        display: none !important;
+    }
+
+    #mainContent.app-layout-active[data-mobile-section="chat"][data-mobile-chat-view="random"] #home:not(.hidden),
+    #mainContent.app-layout-active[data-mobile-section="chat"][data-mobile-chat-view="random"] #chatWorkspace:not(.hidden) {
+        display: block !important;
+        grid-column: 1;
+        grid-row: 2;
+        width: 100%;
+    }
+
+    #mainContent.app-layout-active[data-mobile-section="chat"][data-mobile-chat-view="random"] #mobileHomeBack {
+        display: inline-flex;
+        align-items: center;
+        min-height: 32px;
+        margin: 0 0 8px;
+        padding: 4px 8px;
+        border-color: transparent;
+        background: transparent;
+        color: #126b61;
+        box-shadow: none;
+    }
+
+    #mainContent.app-layout-guest[data-mobile-section="chat"] #globalChat {
+        display: none !important;
+    }
+
+    #mainContent.app-layout-guest .seo-intro {
+        display: none !important;
+    }
+
+    #mainContent.app-layout-guest[data-mobile-section="chat"] #login {
+        display: block !important;
+        grid-column: 1;
+        grid-row: 2;
+        width: 100%;
+        margin: 4px 0;
+    }
+
+    #mainContent.app-layout-guest[data-mobile-section="global"] #login {
+        display: none !important;
+    }
+
+    #mainContent.app-layout-guest[data-mobile-section="profile"] #globalChat,
+    #mainContent.app-layout-guest[data-mobile-section="profile"] #home,
+    #mainContent.app-layout-guest[data-mobile-section="profile"] #chatWorkspace,
+    #mainContent.app-layout-guest[data-mobile-section="profile"] #contactSidebar {
+        display: none !important;
+    }
+
+    #mainContent.app-layout-guest[data-mobile-section="profile"] #login {
+        display: block !important;
+        grid-column: 1;
+        grid-row: 2;
+        width: 100%;
+        margin: 4px 0;
+    }
+
+    #mainContent[data-mobile-section="chat"][data-mobile-chat-view="thread"] .contact-conversation-heading {
+        gap: 8px;
+    }
+
+    #mainContent[data-mobile-section="chat"][data-mobile-chat-view="thread"] .mobile-chat-back {
+        display: inline-flex;
+        flex: 0 0 auto;
+        align-items: center;
+        min-height: 34px;
+        margin: 0;
+        padding: 5px 8px;
+        border-color: transparent;
+        background: transparent;
+        color: #126b61;
+        white-space: nowrap;
+    }
+
+    .mobile-section-tabs {
+        position: fixed;
+        z-index: 300;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+        padding: 7px 16px calc(7px + env(safe-area-inset-bottom));
+        border-top: 1px solid rgba(150, 165, 157, .3);
+        background: rgba(255, 255, 255, .94);
+        box-shadow: 0 -8px 26px rgba(23, 32, 42, .08);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+    }
+
+    .mobile-section-tab {
+        display: flex;
+        min-height: 48px;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+        margin: 0;
+        padding: 4px 10px;
+        border: 1px solid transparent;
+        border-radius: 12px;
+        background: transparent;
+        color: #69766f;
+        font-size: 11px;
+        font-weight: 650;
+        line-height: 1.2;
+        box-shadow: none;
+    }
+
+    a.mobile-section-tab {
+        text-decoration: none;
+    }
+
+    .mobile-section-tab:hover:not(:disabled) {
+        background: rgba(22, 128, 93, .06);
+        box-shadow: none;
+        filter: none;
+    }
+
+    .mobile-section-tab.is-active {
+        border-color: rgba(22, 128, 93, .12);
+        background: #e7f3ed;
+        color: #126b61;
+    }
+
+    a.mobile-section-tab:visited {
+        color: inherit;
+    }
+
+    a.mobile-section-tab.is-active:visited {
+        color: #126b61;
+    }
+
+    .mobile-section-tab svg {
+        width: 21px;
+        height: 21px;
+        fill: none;
+        stroke: currentColor;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 1.8;
+    }
+
+    body[data-mobile-section] .site-footer {
+        display: none;
+    }
+
+    .account-page main {
+        padding-bottom: calc(88px + env(safe-area-inset-bottom));
+    }
+
+    html[data-theme="dark"] .mobile-section-tabs {
+        border-color: rgba(255, 255, 255, .11);
+        background: rgba(17, 17, 17, .94);
+        box-shadow: 0 -8px 26px rgba(0, 0, 0, .35);
+    }
+
+    html[data-theme="dark"] .mobile-section-tab {
+        color: #aaa;
+    }
+
+    html[data-theme="dark"] .mobile-section-tab.is-active {
+        border-color: rgba(114, 173, 145, .2);
+        background: #1d3027;
+        color: #a8d5c4;
+    }
+
+    html[data-theme="dark"] a.mobile-section-tab.is-active:visited {
+        color: #a8d5c4;
+    }
+
+    html[data-theme="dark"] #mainContent[data-mobile-section="chat"] .mobile-chat-back {
+        color: #a8d5c4;
+    }
+}
+
+@media (max-width: 380px) {
+    #mainContent.app-layout-active,
+    #mainContent.app-layout-guest {
+        padding-right: 8px;
+        padding-left: 8px;
+    }
+
+    .mobile-section-tabs {
+        padding-right: 10px;
+        padding-left: 10px;
+    }
+}
