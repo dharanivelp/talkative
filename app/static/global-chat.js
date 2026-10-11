@@ -6,7 +6,7 @@
     const form = document.getElementById("globalChatForm");
     const input = document.getElementById("globalChatInput");
     const sendButton = document.getElementById("globalChatSendButton");
-    const MAX_RENDERED_MESSAGES = 100;
+    const MAX_RENDERED_MESSAGES = 20;
     let authenticated = false;
     let previewExpired = false;
     let lastMessageId = 0;

@@ -53,6 +53,10 @@ class GlobalChatTests(unittest.TestCase):
             self.assertEqual(first.status_code, 200)
             self.assertEqual(first.json, second.json)
             self.assertEqual(len(first.json["messages"]), chat_backend.GLOBAL_CHAT_SIMULATION_HISTORY)
+            self.assertGreater(
+                len({message["text"] for message in first.json["messages"]}),
+                20,
+            )
 
             next_time = current_time + chat_backend.GLOBAL_CHAT_SIMULATION_INTERVAL
             with patch.object(chat_backend.time, "time", return_value=next_time):

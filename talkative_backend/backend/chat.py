@@ -15,13 +15,46 @@ GLOBAL_CHAT_SIMULATION_INTERVAL = 6
 GLOBAL_CHAT_SIMULATION_HISTORY = 50
 GLOBAL_CHAT_SIMULATION_MESSAGES = (
     ("Aarav Sharma", "Anyone following the cricket matches this week? The last few overs have been so tense."),
-    ("Ananya Iyer", "I watched a new Tamil film this weekend. Any recommendations for what to watch next?"),
+    ("Ananya Iyer", "I watched a new film this weekend. Any recommendations for what to watch next?"),
     ("Karthik R.", "Tried one of those AI tools to plan a trip. It made a surprisingly useful itinerary."),
-    ("Nila S.", "Chennai weather is finally good for an evening walk. What are your favorite spots?"),
+    ("Nila S.", "The weather is finally good for an evening walk. What are your favorite spots?"),
     ("Vignesh Kumar", "The cricket highlights are all over my feed today. Which team are you cheering for?"),
     ("Meena Lakshmi", "I found a lovely little filter coffee place nearby. Always happy to discover local cafes."),
     ("Arjun P.", "Has anyone tried using AI to learn a new language? Curious how helpful it is."),
-    ("Kavya Subramanian", "Looking for a new Tamil playlist for my commute. Share your favorites!"),
+    ("Kavya Subramanian", "Looking for a new playlist for my commute. Share your favorites!"),
+    ("Rohan Mehta", "What small thing made you smile today?"),
+    ("Zoya Khan", "I started a book with a really unexpected opening. What are you reading lately?"),
+    ("Dev Patel", "Finally tried cooking a dish I usually order out. It turned out better than expected!"),
+    ("Isha Nair", "If you could take a weekend trip anywhere nearby, where would you go?"),
+    ("Maya Das", "I need a new podcast for long walks. Any recommendations?"),
+    ("Kabir Rao", "Spent the afternoon exploring a part of town I had never visited before."),
+    ("Priya Menon", "What's your go-to comfort meal after a busy day?"),
+    ("Neil Joseph", "I made a playlist for a friend and now I keep listening to it myself."),
+    ("Sana Ali", "Anyone else enjoy rainy afternoons with a cup of tea and no plans?"),
+    ("Aditya Bose", "Trying to get better at taking photos. What's your favorite subject to shoot?"),
+    ("Tara Sen", "Just learned a few phrases in a new language. It's fun being a beginner again."),
+    ("Manav Shah", "What's a hobby you'd like to make more time for this year?"),
+    ("Leela Krishnan", "I found a quiet park with the nicest walking trail this morning."),
+    ("Omar Farooq", "What song have you had on repeat lately?"),
+    ("Riya Kapoor", "A friend introduced me to a board game I had never heard of. Any favorites?"),
+    ("Sam Thomas", "I finally fixed something at home that I had been putting off for weeks."),
+    ("Aditi Roy", "Do you prefer planning a trip in detail or figuring it out as you go?"),
+    ("Farah Sheikh", "Trying a new recipe tonight. Fingers crossed it works out!"),
+    ("Ibrahim Khan", "What's the best live show or concert you've been to?"),
+    ("Neha Pillai", "I started stretching in the morning and it makes waking up a little easier."),
+    ("Jay Shah", "What place would you happily visit again and again?"),
+    ("Pooja Nair", "I love hearing how people spend a slow weekend. What does yours look like?"),
+    ("Ravi Verma", "Found a great little second-hand bookshop today. I could browse for hours."),
+    ("Mina Paul", "What's something useful you learned from a friend recently?"),
+    ("Sahil Gupta", "A long walk with good music is still my favorite way to reset."),
+    ("Divya Rao", "Would you rather watch a documentary or a comedy tonight?"),
+    ("Aman Gill", "I tried drawing again after ages. It was relaxing, even if I'm rusty."),
+    ("Nandini Sen", "What are your favorite ways to explore a new city?"),
+    ("Ethan D'Souza", "A stranger recommended a song to me today and it was exactly my kind of music."),
+    ("Saira Ahmed", "What's one thing you're looking forward to this week?"),
+    ("Varun Nair", "I took the scenic route home and found a new cafe along the way."),
+    ("Mira Joshi", "Do you have a favorite game to play with friends?"),
+    ("Arun Das", "I set aside an hour to do nothing today. More people should try it."),
 )
 
 
@@ -54,7 +87,10 @@ def global_chat_simulation_messages():
 
     current_slot = max(0, int((time.time() - GLOBAL_CHAT_SIMULATION_EPOCH) // GLOBAL_CHAT_SIMULATION_INTERVAL))
     cursor = max(current_slot, after or 0)
-    first_slot = (current_slot // GLOBAL_CHAT_SIMULATION_HISTORY) * GLOBAL_CHAT_SIMULATION_HISTORY + 1
+    first_slot = max(
+        1,
+        ((current_slot - 1) // GLOBAL_CHAT_SIMULATION_HISTORY) * GLOBAL_CHAT_SIMULATION_HISTORY + 1,
+    )
     reset = after is not None and after < first_slot
     if after is not None and not reset:
         first_slot = max(first_slot, after + 1)
